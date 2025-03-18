@@ -26,7 +26,7 @@ export function nthuAuth(options: {
         expires_in: Number(c.req.query("expires_in")),
       },
     });
-
+    
     // Redirect to login dialog
     if (!auth.code) {
       setCookie(c, "state", newState, {

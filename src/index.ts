@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { nthuAuth } from "./nthuoauth/nthuAuth";
+import {logger} from 'hono/logger';
 
 if (!process.env.NTHU_OAUTH_CLIENT_ID) {
   throw new Error("NTHU_OAUTH_CLIENT_ID is not set");
@@ -10,6 +11,7 @@ if (!process.env.NTHU_OAUTH_CLIENT_SECRET) {
 }
 
 const app = new Hono()
+  .use(logger())
   .use(
     "/oauth/nthu", // -> redirect_uri by default
     nthuAuth({ 
