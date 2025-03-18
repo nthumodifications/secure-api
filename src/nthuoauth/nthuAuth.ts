@@ -2,60 +2,59 @@ import { MiddlewareHandler } from "hono";
 import { Scopes } from "./types";
 import { getRandomState } from "../utils/getRandomState";
 import { AuthFlow } from "./authFlow";
-import { getCookie, setCookie } from 'hono/cookie'
-import { HTTPException } from 'hono/http-exception'
+import { getCookie, setCookie } from "hono/cookie";
+import { HTTPException } from "hono/http-exception";
 
 export function nthuAuth(options: {
-  scopes: Scopes[],
-  client_id: string,
-  client_secret: string,
-  redirect_uri?: string,
+  scopes: Scopes[];
+  client_id: string;
+  client_secret: string;
+  redirect_uri?: string;
 }): MiddlewareHandler {
   return async (c, next) => {
-
-    const newState = getRandomState()
+    const newState = getRandomState();
 
     const auth = new AuthFlow({
       client_id: options.client_id,
       client_secret: options.client_secret,
-      redirect_uri: options.redirect_uri ?? c.req.url.split('?')[0],
+      redirect_uri: options.redirect_uri ?? c.req.url.split("?")[0],
       scope: options.scopes,
       state: newState,
-      code: c.req.query('code'),
+      code: c.req.query("code"),
       token: {
-        token: c.req.query('access_token') as string,
-        expires_in: Number(c.req.query('expires_in')),
-      }
-    })
+        token: c.req.query("access_token") as string,
+        expires_in: Number(c.req.query("expires_in")),
+      },
+    });
 
     // Redirect to login dialog
     if (!auth.code) {
-      setCookie(c, 'state', newState, {
+      setCookie(c, "state", newState, {
         maxAge: 60 * 10,
         httpOnly: true,
-        path: '/',
+        path: "/",
         // secure: true,
-      })
-      return c.redirect(auth.redirect())
+      });
+      return c.redirect(auth.redirect());
     }
 
     // Avoid CSRF attack by checking state
-    if (c.req.url.includes('?')) {
-      const storedState = getCookie(c, 'state')
-      if (c.req.query('state') !== storedState) {
-        throw new HTTPException(401)
+    if (c.req.url.includes("?")) {
+      const storedState = getCookie(c, "state");
+      if (c.req.query("state") !== storedState) {
+        throw new HTTPException(401);
       }
     }
 
     // Retrieve user data from NthuOauth
-    await auth.getUserData()
+    await auth.getUserData();
 
     // Set return info
-    c.set('token', auth.token)
-    c.set('refresh-token', auth.refresh_token)
-    c.set('user', auth.user)
-    c.set('granted-scopes', auth.granted_scopes)
+    c.set("token", auth.token);
+    c.set("refresh-token", auth.refresh_token);
+    c.set("user", auth.user);
+    c.set("granted-scopes", auth.granted_scopes);
 
-    await next()
-  }
+    await next();
+  };
 }
