@@ -72,7 +72,6 @@ export class AuthFlow {
   }
 
   private async getTokenFromCode() {
-    console.log("getTokenFromCode");
     const parsedOptions = toQueryParams({
       client_id: this.client_id,
       client_secret: this.client_secret,
@@ -125,7 +124,6 @@ export class AuthFlow {
 
   async getUserData() {
     await this.getTokenFromCode();
-    console.log("Got token from code!");
     const url = "https://oauth.ccxp.nthu.edu.tw/v1.1/resource.php";
     const response = (await fetch(url, {
       headers: {
@@ -136,7 +134,6 @@ export class AuthFlow {
     if (!response.success) {
       throw new HTTPException(400, { message: "Failed to get user data" });
     }
-    console.log("got data from resource.php");
 
     this.user = {
       userid: response.userid,

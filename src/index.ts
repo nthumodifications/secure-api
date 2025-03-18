@@ -1,6 +1,11 @@
 import { Hono } from "hono";
-import { nthuAuth } from "./nthuoauth/nthuAuth";
 import {logger} from 'hono/logger';
+import { nthuAuth, NthuUser, OAuthVariables } from "./nthuoauth";
+declare module 'hono' {
+  interface ContextVariableMap extends OAuthVariables {
+      'user': Partial<NthuUser> | undefined
+  }
+}
 
 if (!process.env.NTHU_OAUTH_CLIENT_ID) {
   throw new Error("NTHU_OAUTH_CLIENT_ID is not set");
@@ -21,6 +26,17 @@ const app = new Hono()
       scopes: ["userid", "inschool", "name", "email"]
     })
   )
+  .get("/oauth/nthu", (c) => {
+    const token = c.get('token')
+    const grantedScopes = c.get('granted-scopes')
+    const user = c.get('user')
+
+    return c.json({
+      token,
+      grantedScopes,
+      user,
+    })
+  })
   .get("/", (c) => {
     return c.text("Hello NTHUMods Auth Server!");
   })
