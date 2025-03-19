@@ -48,6 +48,7 @@ export type NthuUserInfoResponse = {
 export type NthuUser = {
   userid: string;
   name: string;
+  name_en: string;
   email: string;
   inschool: boolean;
   cid: string;

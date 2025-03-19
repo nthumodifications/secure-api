@@ -1,0 +1,33 @@
+datasource db {
+  provider = "postgresql" // Use your preferred DB (e.g., PostgreSQL)
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  userid    String   @unique
+  name      String
+  nameEn    String   @map("name_en")
+  email     String
+  inschool  Boolean
+  cid       String?
+  lmsid     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  authCodes AuthCode[]
+}
+
+model AuthCode {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  userId      String
+  clientId    String
+  redirectUri String
+  scope       String?  
+  expiresAt   DateTime
+  user        User     @relation(fields: [userId], references: [id])
+}

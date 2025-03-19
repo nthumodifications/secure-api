@@ -24,6 +24,7 @@ COPY . .
 # [optional] tests & build
 ENV NODE_ENV=production
 RUN bun test
+RUN bun run prisma:generate
 
 # copy production dependencies and source code into final image
 FROM base AS release

@@ -138,6 +138,7 @@ export class AuthFlow {
     this.user = {
       userid: response.userid,
       name: response.name,
+      name_en: response.name_en,
       email: response.email,
       inschool: response.inschool,
       cid: response.cid,

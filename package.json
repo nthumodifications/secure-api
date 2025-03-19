@@ -1,10 +1,16 @@
 {
   "name": "secure-api",
   "scripts": {
-    "dev": "bun run --hot src/index.ts"
+    "dev": "bun run --hot src/index.ts",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev --name init"
   },
   "dependencies": {
-    "hono": "^4.7.2"
+    "@hono/zod-validator": "^0.4.3",
+    "@prisma/client": "^6.5.0",
+    "hono": "^4.7.2",
+    "jose": "^6.0.10",
+    "prisma": "^6.5.0"
   },
   "devDependencies": {
     "@types/bun": "latest"
