@@ -24,7 +24,6 @@ COPY . .
 # [optional] tests & build
 ENV NODE_ENV=production
 # Assuming prisma schema is in the project root or a prisma directory
-RUN bun run prisma:generate
 RUN bun test
 
 # copy production dependencies and source code into final image
@@ -34,6 +33,8 @@ COPY --from=prerelease /usr/src/app/src/ ./src
 COPY --from=prerelease /usr/src/app/package.json .
 # Copy the generated Prisma client (adjust path if different)
 COPY --from=prerelease /usr/src/app/prisma ./prisma
+RUN bun run prisma:generate
+
 
 # run the app
 USER bun
