@@ -142,6 +142,7 @@ describe("AuthFlow", () => {
       expect(authFlow.user).toEqual({
         userid: "test_user",
         name: "Test User",
+        name_en: "Test User En",
         email: "test@example.com",
         inschool: true,
         cid: "test_cid",
