@@ -79,6 +79,17 @@ const app = new Hono()
       if (!client_id || !redirect_uri || !scope.includes("openid") || response_type !== "code") {
         return c.json({ error: "invalid_request" }, 400);
       }
+      
+      // Check if client_id is registered
+      const client = await prisma.client.findUnique({ where: { clientId: client_id } });
+      if (!client) {
+        return c.json({ error: "unauthorized_client" }, 400);
+      }
+
+      // Check if redirect_uri is allowed for this client
+      if (!client.redirectUris.includes(redirect_uri)) {
+        return c.json({ error: "invalid_request", error_description: "Invalid redirect_uri" }, 400);
+      }
 
       // Store OIDC request data in a cookie
       const oidcData = JSON.stringify({
@@ -159,6 +170,7 @@ const app = new Hono()
         },
       });
 
+      //TODO: add PKCE support
       // Generate and store auth code
       const code = crypto.randomUUID();
       await prisma.authCode.create({

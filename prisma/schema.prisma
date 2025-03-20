@@ -31,3 +31,10 @@ model AuthCode {
   expiresAt   DateTime
   user        User     @relation(fields: [userId], references: [id])
 }
+
+model Client {
+  id           String   @id @default(uuid())
+  clientId     String   @unique
+  redirectUris String[] // Array of allowed redirect URIs
+  clientSecret String?  // Optional, for confidential clients
+}
