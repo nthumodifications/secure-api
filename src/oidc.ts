@@ -90,8 +90,8 @@ const app = new Hono()
       setCookie(c, "oidc_data", oidcData, {
         httpOnly: true,                  // Prevent JavaScript access
         secure: process.env.NODE_ENV === "production", // Use HTTPS in production
-        sameSite: "Lax",             // Prevent CSRF
-        maxAge: 5 * 60,                 // Expire in 5 minutes
+        sameSite: "Lax",             // Allow same-site requests so we can access on /oauth/nthu
+        maxAge: 5 * 60,              // Expire in 5 minutes
         path: "/",
       });
 
@@ -138,7 +138,7 @@ const app = new Hono()
       const { client_id, redirect_uri, scope, clientState } = oidcData;
 
       // Store or update user in Prisma
-      await prisma.user.upsert({
+      const upsertedUser = await prisma.user.upsert({
         where: { userid: user.userid },
         update: {
           name: user.name || "",
@@ -164,10 +164,11 @@ const app = new Hono()
       await prisma.authCode.create({
         data: {
           code,
-          userId: user.userid,
+          userId: upsertedUser.id,
           clientId: client_id,
           redirectUri: redirect_uri,
           expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5-minute expiry
+          scope
         },
       });
       setCookie(c, "oidc_data", "", { maxAge: 0, path: "/" });
