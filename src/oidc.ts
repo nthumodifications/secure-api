@@ -90,7 +90,7 @@ const app = new Hono()
       setCookie(c, "oidc_data", oidcData, {
         httpOnly: true,                  // Prevent JavaScript access
         secure: process.env.NODE_ENV === "production", // Use HTTPS in production
-        sameSite: "Strict",             // Prevent CSRF
+        sameSite: "Lax",             // Prevent CSRF
         maxAge: 5 * 60,                 // Expire in 5 minutes
         path: "/",
       });
