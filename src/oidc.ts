@@ -206,7 +206,7 @@ const app = new Hono()
           return c.json({ error: "invalid_grant" }, 400);
         }
 
-        const user = await prisma.user.findUnique({ where: { userid: authCode.userId } });
+        const user = await prisma.user.findUnique({ where: { id: authCode.userId } });
         if (!user) return c.json({ error: "server_error" }, 500);
 
         const accessToken = await new SignJWT({ sub: user.userid, scope: "openid profile email" })
