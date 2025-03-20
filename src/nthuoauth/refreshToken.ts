@@ -1,5 +1,5 @@
 import { HTTPException } from "hono/http-exception";
-import { NthuTokenResponse } from "./types";
+import type { NthuTokenResponse } from "./types";
 import { toQueryParams } from "../utils/objectToQuery";
 
 export async function refreshToken(

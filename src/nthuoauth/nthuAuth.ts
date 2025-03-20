@@ -1,5 +1,5 @@
-import { MiddlewareHandler } from "hono";
-import { Scopes } from "./types";
+import type { MiddlewareHandler } from "hono";
+import type { Scopes } from "./types";
 import { getRandomState } from "../utils/getRandomState";
 import { AuthFlow } from "./authFlow";
 import { getCookie, setCookie } from "hono/cookie";

@@ -2,11 +2,13 @@ import { Hono } from "hono";
 import { logger } from "hono/logger";
 import { jwtVerify, SignJWT } from "jose";
 import { getCookie, setCookie } from "hono/cookie";
-import { nthuAuth, NthuUser, OAuthVariables } from "./nthuoauth";
+import { nthuAuth } from "./nthuoauth";
+import type { NthuUser, OAuthVariables } from "./nthuoauth";
 import { PrismaClient } from '@prisma/client'
 import { env } from "hono/adapter";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
+import { HTTPException } from "hono/http-exception";
 
 declare module "hono" {
   interface ContextVariableMap extends OAuthVariables {
@@ -15,10 +17,10 @@ declare module "hono" {
 }
 
 // Environment validation
-if (!process.env.NTHU_OAUTH_CLIENT_ID) throw new Error("NTHU_OAUTH_CLIENT_ID is not set");
-if (!process.env.NTHU_OAUTH_CLIENT_SECRET) throw new Error("NTHU_OAUTH_CLIENT_SECRET is not set");
-if (!process.env.JWT_REFRESH_SECRET) throw new Error("JWT_REFRESH_SECRET is not set");
-if (!process.env.JWT_ACCESS_SECRET) throw new Error("JWT_ACCESS_SECRET is not set");
+if (!process.env['NTHU_OAUTH_CLIENT_ID']) throw new Error("NTHU_OAUTH_CLIENT_ID is not set");
+if (!process.env['NTHU_OAUTH_CLIENT_SECRET']) throw new Error("NTHU_OAUTH_CLIENT_SECRET is not set");
+if (!process.env['JWT_REFRESH_SECRET']) throw new Error("JWT_REFRESH_SECRET is not set");
+if (!process.env['JWT_ACCESS_SECRET']) throw new Error("JWT_ACCESS_SECRET is not set");
 
 const prisma = new PrismaClient();
 const ISSUER = "https://auth.nthumods.com";
@@ -59,48 +61,81 @@ const app = new Hono()
       id_token_signing_alg_values_supported: ["HS256"],
     });
   })
+  .get("/authorize",
+    zValidator(
+      'query',
+      z.object({
+        client_id: z.string(),
+        redirect_uri: z.string(),
+        scope: z.string(),
+        state: z.string().optional(),
+        response_type: z.string(),
+      })
+    ),
+    async (c) => {
+      const { client_id, redirect_uri, scope, state: clientState, response_type } = c.req.valid("query");
 
-  // Authorization Endpoint
-  .get("/authorize", zValidator(
-    "query",
-    z.object({
-      client_id: z.string(),
-      redirect_uri: z.string(),
-      state: z.string(),
-      scope: z.string(),
-      response_type: z.string(),
-    }),
-  ), async (c) => {
-    const { client_id, redirect_uri, state, scope, response_type } = c.req.valid("query");
-    if (!client_id || !redirect_uri || !scope.includes("openid") || response_type !== "code") {
-      return c.json({ error: "invalid_request" }, 400);
-    }
+      // Basic validation
+      if (!client_id || !redirect_uri || !scope.includes("openid") || response_type !== "code") {
+        return c.json({ error: "invalid_request" }, 400);
+      }
 
-    // Redirect to NTHU OAuth with embedded OIDC params in state
-    const nthuRedirect = `${process.env.NTHU_OAUTH_AUTH_URL}?client_id=${process.env.NTHU_OAUTH_CLIENT_ID}&redirect_uri=${ISSUER}/oauth/nthu&state=${encodeURIComponent(`${state}|${client_id}|${redirect_uri}`)}&scope=user_id,name,email`;
-    return c.redirect(nthuRedirect);
-  })
-  // NTHU OAuth Callback
-  .use("/oauth/nthu", nthuAuth({
-    client_id: process.env.NTHU_OAUTH_CLIENT_ID,
-    client_secret: process.env.NTHU_OAUTH_CLIENT_SECRET,
-    redirect_uri: `${ISSUER}/oauth/nthu`,
-    scopes: ["userid", "inschool", "name", "email"],
-  }))
+      // Store OIDC request data in a cookie
+      const oidcData = JSON.stringify({
+        client_id,
+        redirect_uri,
+        scope,
+        clientState: clientState || null, // Preserve the client's state if provided
+      });
+      setCookie(c, "oidc_data", oidcData, {
+        httpOnly: true,                  // Prevent JavaScript access
+        secure: process.env.NODE_ENV === "production", // Use HTTPS in production
+        sameSite: "Strict",             // Prevent CSRF
+        maxAge: 5 * 60,                 // Expire in 5 minutes
+        path: "/",
+      });
+
+      // Let nthuAuth handle the NTHU OAuth redirect
+      const nthuAuthMiddleware = nthuAuth({
+        client_id: process.env['NTHU_OAUTH_CLIENT_ID']!,
+        client_secret: process.env['NTHU_OAUTH_CLIENT_SECRET']!,
+        redirect_uri: process.env['NTHU_OAUTH_REDIRECT_URI'],
+        scopes: ["userid", "name", "email", "inschool"]
+      });
+
+      return await nthuAuthMiddleware(c, async () => { });
+    })
   .get("/oauth/nthu",
     zValidator(
       'query',
       z.object({
         state: z.string(),
-      })
+        code: z.string(),
+      }),
     ),
+    async (c, next) => {
+      // Check if oidcData cookies exist
+      const oidcDataCookie = getCookie(c, "oidc_data");
+      if (!oidcDataCookie) {
+        throw new HTTPException(400, { message: "invalid_request" });
+      }
+      await next();
+    },
+    nthuAuth({
+      client_id: process.env['NTHU_OAUTH_CLIENT_ID'],
+      client_secret: process.env['NTHU_OAUTH_CLIENT_SECRET'],
+      redirect_uri: process.env['NTHU_OAUTH_REDIRECT_URI'],
+      scopes: ["userid", "inschool", "name", "email"],
+    }),
     async (c) => {
       const user = c.get("user");
       if (!user?.userid) return c.json({ error: "User ID not available" }, 400);
 
-      const { state: stateStr } = c.req.valid("query");
-      const [state, client_id, redirect_uri] = stateStr?.split("|") || [];
-      if (!state || !client_id || !redirect_uri) return c.json({ error: "Invalid state" }, 400);
+      // Retrieve OIDC data from the cookie
+      const oidcDataCookie = getCookie(c, "oidc_data");
+
+      const oidcData = JSON.parse(oidcDataCookie!);
+      const { client_id, redirect_uri, scope, clientState } = oidcData;
 
       // Store or update user in Prisma
       await prisma.user.upsert({
@@ -135,14 +170,15 @@ const app = new Hono()
           expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5-minute expiry
         },
       });
+      setCookie(c, "oidc_data", "", { maxAge: 0, path: "/" });
 
-      return c.redirect(`${redirect_uri}?code=${code}&state=${state}`);
+      return c.redirect(`${redirect_uri}?code=${code}&state=${clientState}`);
     })
 
   // Token Endpoint
   .post("/token",
     zValidator(
-      'json',
+      'form',
       z.object({
         grant_type: z.string(),
         code: z.string().optional(),
@@ -160,7 +196,7 @@ const app = new Hono()
       const REFRESH_SECRET = new TextEncoder().encode(JWT_REFRESH_SECRET);
       const IDTOKEN_SECRET = new TextEncoder().encode(JWT_IDTOKEN_SECRET);
 
-      const { grant_type, code, refresh_token } = c.req.valid("json");
+      const { grant_type, code, refresh_token } = c.req.valid("form");
 
       if (grant_type === "authorization_code") {
         if (!code) return c.json({ error: "invalid_request" }, 400);
