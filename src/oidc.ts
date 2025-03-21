@@ -30,22 +30,6 @@ const ID_TOKEN_EXPIRY = "1h";
 
 const VALID_SCOPES = ["openid", "user", "user:read", "user:write", "courses:read", "courses:write"];
 const app = new Hono()
-  .use(logger())
-
-  // CORS for cross-domain access
-  .use("*", async (c, next) => {
-    const origin = c.req.header("Origin");
-    const allowedOrigins = [
-      "https://nthumods.com",
-      "https://course.nthumods.com",
-    ];
-    if (origin && allowedOrigins.includes(origin)) {
-      c.header("Access-Control-Allow-Origin", origin);
-      c.header("Access-Control-Allow-Credentials", "true");
-      c.header("Access-Control-Allow-Headers", "Authorization, Content-Type");
-    }
-    await next();
-  })
 
   // OIDC Discovery Endpoint
   .get("/.well-known/openid-configuration", (c) => {
