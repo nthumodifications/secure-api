@@ -4,11 +4,7 @@ import { getCookie } from "hono/cookie";
 import { createMiddleware } from "hono/factory";
 
 
-if (!process.env["JWT_ACCESS_SECRET"])
-  throw new Error("JWT_ACCESS_SECRET is not set");
-
 const prisma = new PrismaClient();
-const SECRET = new TextEncoder().encode(process.env['JWT_ACCESS_SECRET']);
 
 // Middleware to check authentication and scopes
 export const requireAuth = (requiredScopes: string[] = []) => createMiddleware<{
@@ -35,7 +31,7 @@ export const requireAuth = (requiredScopes: string[] = []) => createMiddleware<{
       });
       if (!token) throw new Error("Token not found");
       if (token.expiresAt < new Date()) throw new Error("Token expired");
-      
+
 ;     const user = await prisma.user.findUnique({
         where: { id: token.userId },
       });

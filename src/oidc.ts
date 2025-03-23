@@ -10,6 +10,7 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { HTTPException } from "hono/http-exception";
 import { addSeconds } from "date-fns";
+import {cors} from 'hono/cors';
 
 // Environment validation
 if (!process.env["NTHU_OAUTH_CLIENT_ID"])
@@ -35,8 +36,14 @@ const VALID_SCOPES = [
 ];
 
 const app = new Hono()
-
-  // OIDC Discovery Endpoint
+  .use('*', 
+    cors({
+      origin: ['http://localhost:3000', 'https://nthumods.com', 'https://course.nthumods.com'],
+      allowHeaders: ['Authorization', 'Content-Type'],
+      allowMethods: ['GET', 'POST'],
+      credentials: true,
+    })
+  )
   .get("/.well-known/openid-configuration", (c) => {
     return c.json({
       issuer: ISSUER,
@@ -54,7 +61,6 @@ const app = new Hono()
     const { JWT_PUBLIC_KEY } = env<{
       JWT_PUBLIC_KEY: string;
     }>(c);
-    console.log(JWT_PUBLIC_KEY.replace(/\\n/g, '\n'));
     const publicKey = await importSPKI(JWT_PUBLIC_KEY.replace(/\\n/g, "\n"), "RS256");
     const jwk = await exportJWK(publicKey);
     jwk.kid = "1";
