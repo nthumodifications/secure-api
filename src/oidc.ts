@@ -54,7 +54,7 @@ const app = new Hono()
     const { JWT_PUBLIC_KEY } = env<{
       JWT_PUBLIC_KEY: string;
     }>(c);
-    console.log(JWT_PUBLIC_KEY);
+    console.log(JWT_PUBLIC_KEY.replace(/\\n/g, '\n'));
     const publicKey = await importSPKI(JWT_PUBLIC_KEY.replace(/\\n/g, "\n"), "RS256");
     const jwk = await exportJWK(publicKey);
     jwk.kid = "1";
