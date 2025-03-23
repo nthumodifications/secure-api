@@ -54,6 +54,7 @@ const app = new Hono()
     const { JWT_PUBLIC_KEY } = env<{
       JWT_PUBLIC_KEY: string;
     }>(c);
+    console.log(JWT_PUBLIC_KEY);
     const publicKey = await importSPKI(JWT_PUBLIC_KEY.replace(/\\n/g, "\n"), "RS256");
     const jwk = await exportJWK(publicKey);
     jwk.kid = "1";
@@ -510,7 +511,6 @@ const app = new Hono()
       return c.json({ error: "invalid_token" }, 401);
     }
   })
-
   .post("/logout", async (c) => {
     if (c.req.header("Origin")?.includes("nthumods.com")) {
       setCookie(c, "access_token", "", {
