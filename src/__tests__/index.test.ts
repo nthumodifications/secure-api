@@ -37,7 +37,6 @@
 //   },
 // }));
 
-
 // // Import your existing app
 // const { default: app } = await import('../oidc');
 
@@ -138,7 +137,7 @@
 //       redirect: "manual",
 //     });
 //     // TODO: Need to mock NTHU OAuth to get the code
-    
+
 //     expect(res.status).toBe(302);
 //     const redirectUrl = new URL(res.headers.get("location")!);
 //     expect(redirectUrl.searchParams.get("code")).toBeDefined();

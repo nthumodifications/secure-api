@@ -7,30 +7,30 @@ import { AuthFlow } from "../authFlow";
 // Mock dependencies
 mock.module("hono/cookie", () => ({
   getCookie: mock(() => "test_state"),
-  setCookie: mock(() => {})
+  setCookie: mock(() => {}),
 }));
 
 mock.module("../utils/getRandomState", () => ({
-  getRandomState: mock(() => "test_state")
+  getRandomState: mock(() => "test_state"),
 }));
 
 describe("nthuAuth middleware", () => {
-interface MockContext {
+  interface MockContext {
     req: {
-        url: string;
-        query: (key: string) => string | undefined;
+      url: string;
+      query: (key: string) => string | undefined;
     };
     redirect: () => string;
     set: (key: string, value: any) => void;
-}
+  }
 
-let mockContext: MockContext;
-interface NextFunction {
+  let mockContext: MockContext;
+  interface NextFunction {
     (): Promise<void>;
-}
+  }
 
-let nextMock: NextFunction;
-  
+  let nextMock: NextFunction;
+
   beforeEach(() => {
     // Create a mock context object
     mockContext = {
@@ -41,17 +41,17 @@ let nextMock: NextFunction;
             code: "test_code",
             state: "test_state",
             access_token: "test_token",
-            expires_in: "3600"
+            expires_in: "3600",
           };
           return params[key];
-        })
+        }),
       },
       redirect: mock(() => "redirected"),
-      set: mock(() => {})
+      set: mock(() => {}),
     };
-    
+
     nextMock = mock(() => Promise.resolve());
-    
+
     // Create a mock AuthFlow class
     mock.module("../authFlow", () => {
       class MockAuthFlow {
@@ -60,18 +60,18 @@ let nextMock: NextFunction;
         refresh_token = { token: "mock_refresh_token", expires_in: 0 };
         user = { userid: "test_user" };
         granted_scopes = ["userid", "name"];
-        
+
         constructor(options: { code: string }) {
           this.code = options.code;
         }
-        
+
         redirect() {
           return "https://oauth.ccxp.nthu.edu.tw/mock-redirect";
         }
-        
+
         getUserData = mock(() => Promise.resolve());
       }
-      
+
       return { AuthFlow: MockAuthFlow };
     });
   });
@@ -87,18 +87,18 @@ let nextMock: NextFunction;
       ...mockContext,
       req: {
         ...mockContext.req,
-        query: mock(() => undefined)
-      }
+        query: mock(() => undefined),
+      },
     };
-    
+
     const middleware = nthuAuth({
       scopes: ["userid", "name"],
       client_id: "test_client",
-      client_secret: "test_secret"
+      client_secret: "test_secret",
     });
 
     const result = await middleware(noCodeContext as any, nextMock);
-    
+
     // Check if setCookie was called
     expect(setCookie).toHaveBeenCalled();
     // Check if redirect was called
@@ -109,22 +109,22 @@ let nextMock: NextFunction;
     // Setup mock to return mismatched state
     mock.module("hono/cookie", () => ({
       getCookie: mock(() => "different_state"),
-      setCookie: mock(() => {})
+      setCookie: mock(() => {}),
     }));
-    
+
     // Create a context with state in URL
     const stateContext = {
       ...mockContext,
       req: {
         ...mockContext.req,
-        url: "https://example.com/auth?code=test_code&state=test_state"
-      }
+        url: "https://example.com/auth?code=test_code&state=test_state",
+      },
     };
-    
+
     const middleware = nthuAuth({
       scopes: ["userid", "name"],
       client_id: "test_client",
-      client_secret: "test_secret"
+      client_secret: "test_secret",
     });
 
     // Expect middleware to throw due to state mismatch
@@ -145,17 +145,28 @@ let nextMock: NextFunction;
     const middleware = nthuAuth({
       scopes: ["userid", "name"],
       client_id: "test_client",
-      client_secret: "test_secret"
+      client_secret: "test_secret",
     });
 
     await middleware(mockContext as any, nextMock);
-    
+
     // Verify that context variables were set
-    expect(mockContext.set).toHaveBeenCalledWith("token", { token: "mock_token", expires_in: 3600 });
-    expect(mockContext.set).toHaveBeenCalledWith("refresh-token", { token: "mock_refresh_token", expires_in: 0 });
-    expect(mockContext.set).toHaveBeenCalledWith("user", { userid: "test_user" });
-    expect(mockContext.set).toHaveBeenCalledWith("granted-scopes", ["userid", "name"]);
-    
+    expect(mockContext.set).toHaveBeenCalledWith("token", {
+      token: "mock_token",
+      expires_in: 3600,
+    });
+    expect(mockContext.set).toHaveBeenCalledWith("refresh-token", {
+      token: "mock_refresh_token",
+      expires_in: 0,
+    });
+    expect(mockContext.set).toHaveBeenCalledWith("user", {
+      userid: "test_user",
+    });
+    expect(mockContext.set).toHaveBeenCalledWith("granted-scopes", [
+      "userid",
+      "name",
+    ]);
+
     // Check that next middleware was called
     expect(nextMock).toHaveBeenCalled();
   });

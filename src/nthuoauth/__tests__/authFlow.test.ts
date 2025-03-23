@@ -17,20 +17,24 @@ describe("AuthFlow", () => {
     });
 
     const redirectUrl = authFlow.redirect();
-    
+
     // Create an actual URL object to parse the components
     const url = new URL(redirectUrl);
-    
+
     // Test the base URL
-    expect(url.origin + url.pathname).toBe("https://oauth.ccxp.nthu.edu.tw/v1.1/authorize.php");
-    
+    expect(url.origin + url.pathname).toBe(
+      "https://oauth.ccxp.nthu.edu.tw/v1.1/authorize.php",
+    );
+
     // Test each query parameter individually
     expect(url.searchParams.get("response_type")).toBe("code");
     expect(url.searchParams.get("client_id")).toBe("test_client");
     expect(url.searchParams.get("scope")).toBe("userid name");
     expect(url.searchParams.get("state")).toBe("test_state");
     expect(url.searchParams.get("prompt")).toBe("consent");
-    expect(url.searchParams.get("redirect_uri")).toBe("https://example.com/callback");
+    expect(url.searchParams.get("redirect_uri")).toBe(
+      "https://example.com/callback",
+    );
   });
 
   it("should get token from code successfully", async () => {
@@ -48,7 +52,7 @@ describe("AuthFlow", () => {
       }
       return mockJsonResponse({});
     });
-    
+
     globalThis.fetch = fetchMock;
 
     try {
@@ -63,7 +67,7 @@ describe("AuthFlow", () => {
       });
 
       await authFlow["getTokenFromCode"]();
-      
+
       expect(authFlow.token).toEqual({
         token: "test_access_token",
         expires_in: 3600,
@@ -73,7 +77,7 @@ describe("AuthFlow", () => {
         expires_in: 0,
       });
       expect(authFlow.granted_scopes).toEqual(["userid", "name"]);
-      
+
       // Check that fetch was called with the right URL
       expect(fetchMock).toHaveBeenCalledWith(
         "https://oauth.ccxp.nthu.edu.tw/v1.1/token.php",
@@ -81,8 +85,8 @@ describe("AuthFlow", () => {
           method: "POST",
           headers: {
             "Content-Type": "application/x-www-form-urlencoded",
-          }
-        })
+          },
+        }),
       );
     } finally {
       globalThis.fetch = originalFetch;
@@ -93,7 +97,7 @@ describe("AuthFlow", () => {
     // Mock fetch to handle both token and resource endpoints
     const originalFetch = globalThis.fetch;
     let tokenCalled = false;
-    
+
     const fetchMock = mock(async (url) => {
       if (url === "https://oauth.ccxp.nthu.edu.tw/v1.1/token.php") {
         tokenCalled = true;
@@ -104,8 +108,7 @@ describe("AuthFlow", () => {
           scope: "userid name",
           refresh_token: "test_refresh_token",
         });
-      } 
-      else if (url === "https://oauth.ccxp.nthu.edu.tw/v1.1/resource.php") {
+      } else if (url === "https://oauth.ccxp.nthu.edu.tw/v1.1/resource.php") {
         // Only return user data if token was called first
         if (tokenCalled) {
           return mockJsonResponse({
@@ -123,7 +126,7 @@ describe("AuthFlow", () => {
       }
       return mockJsonResponse({});
     });
-    
+
     globalThis.fetch = fetchMock;
 
     try {
@@ -138,7 +141,7 @@ describe("AuthFlow", () => {
       });
 
       await authFlow.getUserData();
-      
+
       expect(authFlow.user).toEqual({
         userid: "test_user",
         name: "Test User",
@@ -148,7 +151,7 @@ describe("AuthFlow", () => {
         cid: "test_cid",
         lmsid: "test_lmsid",
       });
-      
+
       // Verify fetch was called for both endpoints
       expect(fetchMock).toHaveBeenCalledTimes(2);
     } finally {
@@ -177,7 +180,9 @@ describe("AuthFlow", () => {
         token: undefined,
       });
 
-      await expect(authFlow["getTokenFromCode"]()).rejects.toThrow(HTTPException);
+      await expect(authFlow["getTokenFromCode"]()).rejects.toThrow(
+        HTTPException,
+      );
     } finally {
       globalThis.fetch = originalFetch;
     }
@@ -187,7 +192,7 @@ describe("AuthFlow", () => {
     // Mock fetch to succeed for token but fail for resource
     const originalFetch = globalThis.fetch;
     let callCount = 0;
-    
+
     globalThis.fetch = mock(async (url) => {
       callCount++;
       if (callCount === 1) {
@@ -202,7 +207,7 @@ describe("AuthFlow", () => {
       } else {
         // Second call is for user data
         return mockJsonResponse({
-          success: false
+          success: false,
         });
       }
     });

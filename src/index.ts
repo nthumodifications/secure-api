@@ -1,6 +1,6 @@
 import { Hono } from "hono";
-import oidc from './oidc';
-import {logger} from 'hono/logger';
+import oidc from "./oidc";
+import { logger } from "hono/logger";
 
 export const app = new Hono()
   .use(logger())
@@ -20,10 +20,10 @@ export const app = new Hono()
     }
     await next();
   })
-  .get('/', async (c) => {
+  .get("/", async (c) => {
     return c.text("Hello, world!");
   })
-  .route('/', oidc)
+  .route("/", oidc);
 
 export default {
   port: 5002,

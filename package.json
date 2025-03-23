@@ -8,6 +8,8 @@
   "dependencies": {
     "@hono/zod-validator": "^0.4.3",
     "@prisma/client": "^6.5.0",
+    "date-fns": "^4.1.0",
+    "firebase-admin": "^13.2.0",
     "hono": "^4.7.2",
     "jose": "^6.0.10",
     "prisma": "^6.5.0"

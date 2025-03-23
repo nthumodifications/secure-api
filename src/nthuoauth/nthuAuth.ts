@@ -1,17 +1,25 @@
-import type { MiddlewareHandler } from "hono";
-import type { Scopes } from "./types";
+import type { NthuUser, Scopes, Token } from "./types";
 import { getRandomState } from "../utils/getRandomState";
 import { AuthFlow } from "./authFlow";
 import { getCookie, setCookie } from "hono/cookie";
 import { HTTPException } from "hono/http-exception";
+import { createMiddleware } from 'hono/factory'
 
-export function nthuAuth(options: {
+
+
+const nthuAuth = (options: {
   scopes: Scopes[];
   client_id: string;
   client_secret: string;
   redirect_uri?: string;
-}): MiddlewareHandler {
-  return async (c, next) => {
+}) => createMiddleware<{
+  Variables: {
+    user: Partial<NthuUser> | undefined;
+    token: Token | undefined;
+    "refresh-token": Token | undefined;
+    "granted-scopes": string[] | undefined;
+  }
+}>(async (c, next) => {
     const newState = getRandomState();
 
     const auth = new AuthFlow({
@@ -26,7 +34,7 @@ export function nthuAuth(options: {
         expires_in: Number(c.req.query("expires_in")),
       },
     });
-    
+
     // Redirect to login dialog
     if (!auth.code) {
       setCookie(c, "state", newState, {
@@ -56,5 +64,6 @@ export function nthuAuth(options: {
     c.set("granted-scopes", auth.granted_scopes);
 
     await next();
-  };
-}
+  });
+
+export default nthuAuth;
