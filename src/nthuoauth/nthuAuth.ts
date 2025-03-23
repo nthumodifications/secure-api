@@ -22,14 +22,14 @@ const nthuAuth = (options: {
     state: string | undefined;
   }
 }>(async (c, next) => {
-    const newState = getRandomState();
+    const state = options.state ?? getRandomState();
 
     const auth = new AuthFlow({
       client_id: options.client_id,
       client_secret: options.client_secret,
       redirect_uri: options.redirect_uri ?? c.req.url.split("?")[0],
       scope: options.scopes,
-      state: options.state ?? newState,
+      state: state,
       code: c.req.query("code"),
       token: {
         token: c.req.query("access_token") as string,
@@ -39,7 +39,7 @@ const nthuAuth = (options: {
 
     // Redirect to login dialog
     if (!auth.code) {
-      setCookie(c, "state", newState, {
+      setCookie(c, "state", state, {
         maxAge: 60 * 10,
         httpOnly: true,
         path: "/",
