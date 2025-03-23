@@ -4,6 +4,8 @@ import { z } from "zod";
 import { requireAuth } from '../middleware/requireAuth';
 import { adminFirestore } from '../config/firebase_admin';
 
+const validKeys = ["courses", "course_color_map", "timetable_display_preferences", "timetable_theme", "user_defined_colors"];
+
 const app = new Hono()
   .get("/:key",
     zValidator(
@@ -14,7 +16,6 @@ const app = new Hono()
     ),
     requireAuth(['kv']),
     async (c) => {
-      const validKeys = ["courses", "course_color_map", "timetable_display_preferences", "timetable_theme", "user_defined_colors"];
       const { key } = c.req.valid('param')
       if (!validKeys.includes(key)) {
         return c.json({ error: "Invalid key" }, 400);
@@ -42,7 +43,6 @@ const app = new Hono()
     ),
     requireAuth(['kv']),
     async (c) => {
-      const validKeys = ["course_color_map", "timetable_display_preferences", "timetable_theme", "user_defined_colors"];
       const { key } = c.req.valid('param')
       const { value } = c.req.valid('json')
       if (!validKeys.includes(key)) {
