@@ -1,5 +1,5 @@
 import { describe, expect, it, mock, beforeEach, afterEach } from "bun:test";
-import { nthuAuth } from "../nthuAuth";
+import nthuAuth from "../nthuAuth";
 import { getCookie, setCookie } from "hono/cookie";
 import { HTTPException } from "hono/http-exception";
 import { AuthFlow } from "../authFlow";
