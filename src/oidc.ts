@@ -54,7 +54,7 @@ const app = new Hono()
     const { JWT_PUBLIC_KEY } = env<{
       JWT_PUBLIC_KEY: string;
     }>(c);
-    const publicKey = await importSPKI(JWT_PUBLIC_KEY, "RS256");
+    const publicKey = await importSPKI(JWT_PUBLIC_KEY.replace(/\\n/g, "\n"), "RS256");
     const jwk = await exportJWK(publicKey);
     jwk.kid = "1";
     jwk.use = "sig";
@@ -282,7 +282,7 @@ const app = new Hono()
         }>(c);
 
       // Convert keys to buffers
-      const privateKey = await importPKCS8(JWT_PRIVATE_KEY, 'RS256');
+      const privateKey = await importPKCS8(JWT_PRIVATE_KEY.replace(/\\n/g, "\n"), 'RS256');
 
       const form = c.req.valid("form");
 
