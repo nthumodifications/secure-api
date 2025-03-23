@@ -70,16 +70,18 @@ const app = new Hono()
         client_id: z.string(),
         redirect_uri: z.string(),
         scope: z.string().transform((scope) => {
-          console.log(scope);
           const scopes = scope.split(" ");
           if (!scopes.every((scope) => VALID_SCOPES.includes(scope))) {
             throw new Error("Invalid scopes");
           }
+          return scopes;
         }).pipe(z.string().array()),
         state: z.string().optional(),
         response_type: z.string(),
         nonce: z.string().optional(),
         ui_locales: z.string().optional(),
+        code_challenge: z.string().optional(),
+        code_challenge_method: z.string().optional(),
       }),
     ),
     async (c) => {
