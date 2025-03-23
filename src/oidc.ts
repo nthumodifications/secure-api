@@ -70,6 +70,7 @@ const app = new Hono()
         client_id: z.string(),
         redirect_uri: z.string(),
         scope: z.string().transform((scope) => {
+          console.log(scope);
           const scopes = scope.split(" ");
           if (!scopes.every((scope) => VALID_SCOPES.includes(scope))) {
             throw new Error("Invalid scopes");
