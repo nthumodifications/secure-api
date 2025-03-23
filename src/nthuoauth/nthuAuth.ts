@@ -12,12 +12,14 @@ const nthuAuth = (options: {
   client_id: string;
   client_secret: string;
   redirect_uri?: string;
+  state?: string;
 }) => createMiddleware<{
   Variables: {
     user: Partial<NthuUser> | undefined;
     token: Token | undefined;
     "refresh-token": Token | undefined;
     "granted-scopes": string[] | undefined;
+    state: string | undefined;
   }
 }>(async (c, next) => {
     const newState = getRandomState();
@@ -27,7 +29,7 @@ const nthuAuth = (options: {
       client_secret: options.client_secret,
       redirect_uri: options.redirect_uri ?? c.req.url.split("?")[0],
       scope: options.scopes,
-      state: newState,
+      state: options.state ?? newState,
       code: c.req.query("code"),
       token: {
         token: c.req.query("access_token") as string,
@@ -62,6 +64,7 @@ const nthuAuth = (options: {
     c.set("refresh-token", auth.refresh_token);
     c.set("user", auth.user);
     c.set("granted-scopes", auth.granted_scopes);
+    c.set("state", auth.state);
 
     await next();
   });

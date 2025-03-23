@@ -33,6 +33,20 @@ model AuthCode {
   user        User     @relation(fields: [userId], references: [id])
 }
 
+model AuthRequest {
+  id          String   @id @default(uuid())
+  clientId    String 
+  redirectUri String
+  scopes      String[]
+  state       String? @unique
+  clientState String?
+  nonce       String?
+  codeChallenge String?
+  codeChallengeMethod String?
+  responseMode String?
+  responseType String[]
+}
+
 model Client {
   id           String   @id @default(uuid())
   clientId     String   @unique

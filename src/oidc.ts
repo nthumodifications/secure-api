@@ -122,19 +122,21 @@ const app = new Hono()
         );
       }
 
-      // Store OIDC request data in a cookie
-      const oidcData = JSON.stringify({
-        client_id,
-        redirect_uri,
-        scope,
-        clientState: clientState || null, // Preserve the client's state if provided
-      });
-      setCookie(c, "oidc_data", oidcData, {
-        httpOnly: true, // Prevent JavaScript access
-        secure: process.env.NODE_ENV === "production", // Use HTTPS in production
-        sameSite: "Lax", // Allow same-site requests so we can access on /oauth/nthu
-        maxAge: 5 * 60, // Expire in 5 minutes
-        path: "/",
+      // create own state
+      const newState = crypto.randomUUID();
+
+      // Store Authentication Request to AuthRequest table
+      const authRequest = await prisma.authRequest.create({
+        data: {
+          clientId: client_id,
+          redirectUri: redirect_uri,
+          scopes: scope,
+          state: newState,
+          clientState: clientState,
+          nonce: c.req.query("nonce"),
+          codeChallenge: c.req.query("code_challenge"),
+          codeChallengeMethod: c.req.query("code_challenge_method"),
+        },
       });
 
       // Let nthuAuth handle the NTHU OAuth redirect
@@ -143,6 +145,7 @@ const app = new Hono()
         client_secret: process.env["NTHU_OAUTH_CLIENT_SECRET"]!,
         redirect_uri: process.env["NTHU_OAUTH_REDIRECT_URI"],
         scopes: ["userid", "name", "email", "inschool"],
+        state: authRequest.state!,
       });
 
       // @ts-ignore
@@ -159,10 +162,13 @@ const app = new Hono()
       }),
     ),
     async (c, next) => {
-      // Check if oidcData cookies exist
-      const oidcDataCookie = getCookie(c, "oidc_data");
-      if (!oidcDataCookie) {
-        throw new HTTPException(400, { message: "invalid_request" });
+      const { state } = c.req.valid("query");
+      // check prisma if such state exists
+      const authRequest = await prisma.authRequest.findUnique({
+        where: { state },
+      });
+      if (!authRequest) {
+        return c.json({ error: "invalid_request" }, 400);
       }
       await next();
     },
@@ -175,22 +181,17 @@ const app = new Hono()
     async (c) => {
       const user = c.var.user;
       if (!user?.userid) return c.json({ error: "User ID not available" }, 400);
+      
+      const { state } = c.req.valid("query");
 
-      // Retrieve OIDC data from the cookie
-      const oidcDataCookie = getCookie(c, "oidc_data");
-
-      const unsafe_oidcData = JSON.parse(oidcDataCookie!);
-
-      // Validate oidcData using zod
-      const oidcDataSchema = z.object({
-        client_id: z.string(),
-        redirect_uri: z.string(),
-        scope: z.string().array(),
-        clientState: z.string().optional(),
+      const authRequest = await prisma.authRequest.findUnique({
+        where: { state },
       });
+      if (!authRequest) {
+        return c.json({ error: "invalid_request" }, 400);
+      }
 
-      const oidcData = oidcDataSchema.parse(unsafe_oidcData);
-      const { client_id, redirect_uri, scope, clientState } = oidcData
+      const { clientId: client_id, redirectUri: redirect_uri, scopes, clientState } = authRequest;
 
       // Get client from Prisma
       const client = await prisma.client.findUnique({
@@ -212,7 +213,7 @@ const app = new Hono()
       }
 
       // check if the requested scopes is contained within the client scopes
-      if (!scope.every((s) => client.scopes.includes(s)) && !scope.includes("openid")) {
+      if (!scopes.every((s) => client.scopes.includes(s)) && !scopes.includes("openid")) {
         return c.json({ error: "invalid_scope" }, 400);
       }
 
@@ -247,10 +248,9 @@ const app = new Hono()
           clientId: client_id,
           redirectUri: redirect_uri,
           expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5-minute expiry
-          scopes: scope
+          scopes: scopes
         },
       });
-      setCookie(c, "oidc_data", "", { maxAge: 0, path: "/" });
 
       return c.redirect(`${redirect_uri}?code=${code}&state=${clientState}`);
     },
