@@ -3,80 +3,11 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { requireAuth } from "../middleware/requireAuth";
 import { adminFirestore } from "../config/firebase_admin";
-import { FieldPath, FieldValue, FirebaseFirestoreError, Query, QueryDocumentSnapshot, Timestamp } from "firebase-admin/firestore";
-import { appendToArray, defaultConflictHandler, ensureNotFalsy, flatClone, lastOfArray, type ById, type RxReplicationWriteToMasterRow, type WithDeleted } from 'rxdb/plugins/core';
-
-type FirestoreCheckpointType = {
-  id: string;
-  serverTimestamp: string;
-}
-
-type RxDocType = {
-  id: string | undefined;
-}
-
-export type GetQuery<RxDocType> = (ids: string[]) => Promise<QueryDocumentSnapshot<RxDocType>[]>;
-
-function stripServerTimestampField(serverTimestampField: string, docData: any): any {
-  const { [serverTimestampField]: _, ...rest } = docData;
-  return rest;
-}
-
-export function firestoreRowToDocData<RxDocType>(
-  serverTimestampField: string,
-  primaryPath: string,
-  row: QueryDocumentSnapshot<RxDocType>
-): WithDeleted<RxDocType> {
-  const docData = stripServerTimestampField(
-    serverTimestampField,
-    row.data()
-  );
-  (docData as any)[primaryPath] = row.id;
-
-  if (primaryPath !== 'id') {
-    delete (docData as any)['id'];
-  }
-
-  return docData;
-}
-
-
-export function serverTimestampToIsoString(serverTimestampField: string, docData: any): string {
-  const timestamp = (docData as any)[serverTimestampField];
-  const date: Date = timestamp.toDate();
-  return date.toISOString();
-}
-
-export function isoStringToServerTimestamp(isoString: string): Timestamp {
-  const date = new Date(isoString);
-  return Timestamp.fromDate(date);
-}
-
-
-export function stripPrimaryKey(
-  primaryPath: string,
-  docData: any
-): any {
-  docData = flatClone(docData);
-  delete (docData as any)[primaryPath];
-  return docData;
-}
-
-// https://stackoverflow.com/questions/61354866/is-there-a-workaround-for-the-firebase-query-in-limit-to-10
-export function getContentByIds<RxDocType>(ids: string[], getQuery: GetQuery<RxDocType>): Promise<QueryDocumentSnapshot<RxDocType>[]> {
-  const batches = [];
-
-  while (ids.length) {
-    // firestore limits batches to 10
-    const batch = ids.splice(0, 10);
-
-    // add the batch request to to a queue
-    batches.push(getQuery(batch));
-  }
-
-  // after all of the data is fetched, return it
-  return Promise.all(batches).then((content) => content.flat());
-}
+import { FieldPath, FieldValue, FirebaseFirestoreError, Query, QueryDocumentSnapshot } from "firebase-admin/firestore";
+import { appendToArray, ensureNotFalsy, flatClone, lastOfArray, type ById, type RxReplicationWriteToMasterRow, type WithDeleted } from 'rxdb/plugins/core';
+import { deepCompare } from "../utils/deepCompare";
+import { isoStringToServerTimestamp, firestoreRowToDocData, serverTimestampToIsoString, getContentByIds, stripServerTimestampField, stripPrimaryKey } from "../utils/firestore_replication/firestore_replication_utils";
+import type { RxDocType, FirestoreCheckpointType } from "../utils/firestore_replication/firestore_replication_types";
 
 const app = new Hono()
   .get("/pull",
@@ -168,11 +99,11 @@ const app = new Hono()
       z.array(z.object({
         newDocumentState: z.object({
           id: z.string().optional(),
-          _deleted: z.boolean().optional().default(false)
+          _deleted: z.boolean()
         }),
         assumedMasterState: z.object({
           id: z.string().optional(),
-          _deleted: z.boolean().optional().default(false)
+          _deleted: z.boolean()
         }).optional(),
       })),
     ),
@@ -246,7 +177,7 @@ const app = new Hono()
               docInDb &&
               (
                 !writeRow.assumedMasterState ||
-                defaultConflictHandler.isEqual(docInDb as any, writeRow.assumedMasterState, 'replication-firestore-push') === false
+                deepCompare(docInDb, writeRow.assumedMasterState) === false
               )
             ) {
               // conflict
