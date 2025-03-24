@@ -307,7 +307,7 @@ const app = new Hono()
       async (c) => {
         const rows = c.req.valid("json") as RxReplicationWriteToMasterRow<TimetableSyncDocType>[];
         const user = c.var.user;
-        const eventsRef = adminFirestore.collection("users").doc(user.userid).collection("events");
+        const timetableSyncRef = adminFirestore.collection("users").doc(user.userid).collection("timetablesync");
   
         const writeRowsById: ById<RxReplicationWriteToMasterRow<TimetableSyncDocType>> = {};
         const docIds: string[] = rows
@@ -333,7 +333,7 @@ const app = new Hono()
            */
   
           const getQuery = (ids: string[]) => {
-            return eventsRef
+            return timetableSyncRef
               .where(FieldPath.documentId(), 'in', ids)
               .get()
               .then(result => result.docs)
@@ -342,7 +342,7 @@ const app = new Hono()
                   // Query may fail due to rules using 'resource' with non existing ids
                   // So try to get the docs one by one
                   return Promise.all(
-                    ids.map(id => eventsRef.doc(id).get())
+                    ids.map(id => timetableSyncRef.doc(id).get())
                   )
                     .then(docs => docs.filter(doc => doc.exists))
                 }
@@ -382,7 +382,7 @@ const app = new Hono()
                 console.log('[PUSH] Write', docId);
                 // No conflict if doc does not exist or assumedMasterState is the same
                 hasWrite = true;
-                const docRef = eventsRef.doc(docId);
+                const docRef = timetableSyncRef.doc(docId);
                 const writeDocData = flatClone(writeRow.newDocumentState);
                 (writeDocData as any)['serverTimestamp'] = FieldValue.serverTimestamp();
                 if (!docInDb) {
