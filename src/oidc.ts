@@ -33,6 +33,7 @@ const VALID_SCOPES = [
   "profile", // name, name_en, inschool
   "email", // email
   "kv",
+  "calendar",
 ];
 
 const app = new Hono()
@@ -55,11 +56,12 @@ const app = new Hono()
       authorization_endpoint: `${ISSUER}/authorize`,
       token_endpoint: `${ISSUER}/token`,
       userinfo_endpoint: `${ISSUER}/userinfo`,
-      jwks_uri: `${ISSUER}/.well-known/jwks.json`, // Placeholder for future JWKS
+      jwks_uri: `${ISSUER}/.well-known/jwks.json`,
       response_types_supported: ["code"],
       grant_types_supported: ["authorization_code", "refresh_token"],
       subject_types_supported: ["public"],
       id_token_signing_alg_values_supported: ["RS256"],
+      scopes_supported: VALID_SCOPES
     });
   })
   .get("/.well-known/jwks.json", async (c) => {
