@@ -1,4 +1,3 @@
-import { jwtVerify } from "jose";
 import { PrismaClient, type User } from "@prisma/client";
 import { getCookie } from "hono/cookie";
 import { createMiddleware } from "hono/factory";
