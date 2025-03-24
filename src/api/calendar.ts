@@ -24,13 +24,15 @@ const app = new Hono()
                 .doc(user.userid)
                 .collection("events")
                 .where("serverTimestamp", ">", new Date(updatedAt))
+                .orderBy("serverTimestamp")
+                .orderBy("id")
                 .limit(limit ?? 10)
                 .get();
-            console.log('path', `users/${user.userid}/events`);
-            console.log('found', data.docs.length);
-            const newCheckpoint = data.empty ? { id, updatedAt } : { id: data.docs[data.docs.length - 1].id, updatedAt: (data.docs[data.docs.length - 1].data()['serverTimestamp'] as Timestamp).toMillis() };
+            const newCheckpoint = data.empty ? 
+                { id, updatedAt } : 
+                { id: data.docs[data.docs.length - 1].id, updatedAt: (data.docs[data.docs.length - 1].data()['serverTimestamp'] as Timestamp).toMillis() };
             return c.json({
-                events: data.docs.map((doc) => doc.data()).map(({serverTimestamp, ...doc}) => ({ ...doc, id: doc['id'] })),
+                events: data.docs.map((doc) => ({ ...doc.data() as { serverTimestamp: Timestamp }, id: doc.id })).map(({ serverTimestamp, ...doc}) => (doc)),
                 checkpoint: newCheckpoint,
             });
         })
