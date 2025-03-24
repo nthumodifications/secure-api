@@ -26,7 +26,7 @@ const app = new Hono()
                 .collection("events")
                 .orderBy("serverTimestamp")
                 .orderBy("id")
-                .where("serverTimestamp", ">", new Date(updatedAt))
+                .where("serverTimestamp", ">", Timestamp.fromDate(new Date(updatedAt)))
                 .limit(limit ?? 10)
                 .get();
             const newCheckpoint = data.empty ? 
