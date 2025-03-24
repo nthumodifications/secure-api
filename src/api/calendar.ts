@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireAuth } from "../middleware/requireAuth";
 import { adminFirestore } from "../config/firebase_admin";
 import { Timestamp } from "firebase-admin/firestore";
+import { lastOfArray } from 'rxdb/plugins/core';
 
 const app = new Hono()
     .get("/pull",
@@ -30,7 +31,7 @@ const app = new Hono()
                 .get();
             const newCheckpoint = data.empty ? 
                 { id, updatedAt } : 
-                { id: data.docs[data.docs.length - 1].id, updatedAt: (data.docs[data.docs.length - 1].data()['serverTimestamp'] as Timestamp).toMillis() };
+                { id: lastOfArray(data.docs)!.id, updatedAt: (lastOfArray(data.docs)!.data()['serverTimestamp'] as Timestamp).toMillis() };
             return c.json({
                 events: data.docs.map((doc) => ({ ...doc.data() as { serverTimestamp: Timestamp }, id: doc.id })).map(({ serverTimestamp, ...doc}) => (doc)),
                 checkpoint: newCheckpoint,
@@ -42,18 +43,16 @@ const app = new Hono()
             z.array(z.object({
                 newDocumentState: z.object({
                     id: z.string(),
-                    updatedAt: z.string(),
+                    updatedAt: z.coerce.number(),
                 }),
                 assumedMasterState: z.object({
                     id: z.string(),
-                    updatedAt: z.string(),
+                    updatedAt: z.coerce.number()
                 }).optional(),
             })),
         ),
         requireAuth(["calendar"]),
         async (c) => {
-            // return unimplemented
-            return c.json([]);
             const changeRows = c.req.valid("json");
             const conflicts = [];
             const user = c.var.user;
@@ -61,8 +60,8 @@ const app = new Hono()
             const batch = adminFirestore.batch();
             const event: {
                 id: string;
-                documents: { id: string; updatedAt: string; }[];
-                checkpoint: { id: string; updatedAt: string; } | null;
+                documents: { id: string; updatedAt: number; }[];
+                checkpoint: { id: string; updatedAt: number; } | null;
             } = {
                 id: user.userid,
                 documents: [],
@@ -74,11 +73,11 @@ const app = new Hono()
                     realMasterState.exists && !changeRow.assumedMasterState ||
                     (
                         realMasterState.exists && changeRow.assumedMasterState &&
-                        realMasterState.data()!['serverTimestamp'] !== changeRow.assumedMasterState!.updatedAt
+                        (realMasterState.data()!['serverTimestamp'] as Timestamp).toMillis() !== changeRow.assumedMasterState!.updatedAt
                     )
                 ) {
                     const { serverTimestamp, ...doc } = realMasterState.data() as any;
-                    conflicts.push({ ...doc, id: doc['id'], updatedAt: serverTimestamp.toDate() });
+                    conflicts.push({ ...doc, id: realMasterState.id, updatedAt: serverTimestamp.toDate() });
                 } else {
                     const { updatedAt, ...newDocumentState } = changeRow.newDocumentState;
                     batch.set(eventsCol.doc(changeRow.newDocumentState.id), {
@@ -90,7 +89,7 @@ const app = new Hono()
                 }
             }
             if (event.documents.length > 0) {
-                await batch.commit();
+                // await batch.commit();
             }
             return c.json(conflicts);
         });
