@@ -32,7 +32,7 @@ describe('deepCompare', () => {
         const date1 = new Date('2023-01-01');
         const date2 = new Date('2023-01-01');
         const date3 = new Date('2023-02-01');
-        
+
         expect(deepCompare(date1, date2)).toBe(true);
         expect(deepCompare(date1, date3)).toBe(false);
     });
@@ -50,29 +50,29 @@ describe('deepCompare', () => {
     });
 
     it('should compare objects correctly', () => {
-        expect(deepCompare({a: 1, b: 2}, {a: 1, b: 2})).toBe(true);
-        expect(deepCompare({a: 1, b: 2}, {a: 1, b: 3})).toBe(false);
-        expect(deepCompare({a: 1, b: 2}, {a: 1})).toBe(false);
+        expect(deepCompare({ a: 1, b: 2 }, { a: 1, b: 2 })).toBe(true);
+        expect(deepCompare({ a: 1, b: 2 }, { a: 1, b: 3 })).toBe(false);
+        expect(deepCompare({ a: 1, b: 2 }, { a: 1 })).toBe(false);
         expect(deepCompare({}, {})).toBe(true);
     });
 
     it('should compare nested objects correctly', () => {
-        expect(deepCompare({a: 1, b: {c: 3}}, {a: 1, b: {c: 3}})).toBe(true);
-        expect(deepCompare({a: 1, b: {c: 3}}, {a: 1, b: {c: 4}})).toBe(false);
+        expect(deepCompare({ a: 1, b: { c: 3 } }, { a: 1, b: { c: 3 } })).toBe(true);
+        expect(deepCompare({ a: 1, b: { c: 3 } }, { a: 1, b: { c: 4 } })).toBe(false);
     });
 
     it('should handle mixed nested structures', () => {
-        const obj1 = {a: 1, b: [1, 2, {c: 3}], d: new Date('2023-01-01')};
-        const obj2 = {a: 1, b: [1, 2, {c: 3}], d: new Date('2023-01-01')};
-        const obj3 = {a: 1, b: [1, 2, {c: 4}], d: new Date('2023-01-01')};
-        
+        const obj1 = { a: 1, b: [1, 2, { c: 3 }], d: new Date('2023-01-01') };
+        const obj2 = { a: 1, b: [1, 2, { c: 3 }], d: new Date('2023-01-01') };
+        const obj3 = { a: 1, b: [1, 2, { c: 4 }], d: new Date('2023-01-01') };
+
         expect(deepCompare(obj1, obj2)).toBe(true);
         expect(deepCompare(obj1, obj3)).toBe(false);
     });
 
     it('should prevent infinite recursion with circular references', () => {
-        const obj1: any = {a: 1};
-        const obj2: any = {a: 1};
+        const obj1: any = { a: 1 };
+        const obj2: any = { a: 1 };
         obj1.self = obj1;
         obj2.self = obj2;
 
@@ -80,10 +80,49 @@ describe('deepCompare', () => {
     });
 
     it('should respect the maxDepth parameter', () => {
-        const obj1 = {a: {b: {c: {d: 1}}}};
-        const obj2 = {a: {b: {c: {d: 1}}}};
-        
+        const obj1 = { a: { b: { c: { d: 1 } } } };
+        const obj2 = { a: { b: { c: { d: 1 } } } };
+
         expect(deepCompare(obj1, obj2, 5)).toBe(true);
         expect(deepCompare(obj1, obj2, 2)).toBe(false);
+    });
+
+    it('should work with large objects', () => {
+        const obj1 = {
+          allDay: false,
+          start: "2025-02-22T08:30:00.000Z",
+          end: "2025-02-22T09:20:00.000Z",
+          repeat: {
+            type: "weekly",
+            interval: 1,
+            mode: "date",
+            value: 1749312000000,
+          },
+          tag: "course",
+          actualEnd: "2025-06-14T09:20:00.000Z",
+          _deleted: false,
+          color: "#fb9fb1",
+          title: "實作專題一",
+          id: "11320EE  390000-5-8-8",
+        };
+        const obj2 = {
+          allDay: false,
+          start: "2025-02-22T08:30:00.000Z",
+          end: "2025-02-22T09:20:00.000Z",
+          repeat: {
+            type: "weekly",
+            interval: 1,
+            mode: "date",
+            value: 1749312000000,
+          },
+          tag: "course",
+          actualEnd: "2025-06-14T09:20:00.000Z",
+          _deleted: false,
+          color: "#fb9fb1",
+          title: "實作專題一",
+          id: "11320EE  390000-5-8-8",
+        };
+
+        expect(deepCompare(obj1, obj2)).toBe(true);
     });
 });

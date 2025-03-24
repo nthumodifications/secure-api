@@ -172,12 +172,16 @@ const app = new Hono()
         await Promise.all(
           Object.entries(writeRowsById).map(async ([docId, writeRow]) => {
             const docInDb: RxDocType | undefined = docsInDbById[docId];
-
+            console.log(docInDb, writeRow.assumedMasterState, deepCompare(docInDb, writeRow.assumedMasterState), docInDb &&
+            (
+              !writeRow.assumedMasterState ||
+              (deepCompare(docInDb, writeRow.assumedMasterState) === false)
+            ));
             if (
               docInDb &&
               (
                 !writeRow.assumedMasterState ||
-                deepCompare(docInDb, writeRow.assumedMasterState) === false
+                (deepCompare(docInDb, writeRow.assumedMasterState) === false)
               )
             ) {
               // Conflict if doc exists and assumedMasterState is different
