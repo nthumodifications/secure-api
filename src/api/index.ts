@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 
 import kvHandler from "./kv_storage";
-import calendarHandler from "./calendar";
+import replicationHandler from "./replication";
 
 const app = new Hono()
   .use(
@@ -14,6 +14,6 @@ const app = new Hono()
     }),
   )
   .route("/kv", kvHandler)
-  .route("/calendar", calendarHandler);
+  .route("/replication", replicationHandler);
 
 export default app;
