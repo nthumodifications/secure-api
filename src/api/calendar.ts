@@ -33,7 +33,7 @@ const app = new Hono()
                 { id, updatedAt } : 
                 { id: lastOfArray(data.docs)!.id, updatedAt: (lastOfArray(data.docs)!.data()['serverTimestamp'] as Timestamp).toMillis() };
             return c.json({
-                events: data.docs.map((doc) => ({ ...doc.data() as { serverTimestamp: Timestamp }, id: doc.id })).map(({ serverTimestamp, ...doc}) => (doc)),
+                events: data.docs.map((doc) => ({ ...doc.data() as { serverTimestamp: Timestamp }, id: doc.id })).map(({ serverTimestamp, ...doc}) => ({ ...doc, updatedAt: serverTimestamp.toMillis() })),
                 checkpoint: newCheckpoint,
             });
         })
