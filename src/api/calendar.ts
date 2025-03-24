@@ -100,11 +100,11 @@ const app = new Hono()
         newDocumentState: z.object({
           id: z.string().optional(),
           _deleted: z.boolean()
-        }),
+        }).passthrough(),
         assumedMasterState: z.object({
           id: z.string().optional(),
           _deleted: z.boolean()
-        }).optional(),
+        }).passthrough().optional(),
       })),
     ),
     requireAuth(["calendar"]),
@@ -172,11 +172,6 @@ const app = new Hono()
         await Promise.all(
           Object.entries(writeRowsById).map(async ([docId, writeRow]) => {
             const docInDb: RxDocType | undefined = docsInDbById[docId];
-            console.log(docInDb, writeRow.assumedMasterState, deepCompare(docInDb, writeRow.assumedMasterState), docInDb &&
-            (
-              !writeRow.assumedMasterState ||
-              (deepCompare(docInDb, writeRow.assumedMasterState) === false)
-            ));
             if (
               docInDb &&
               (
