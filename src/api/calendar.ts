@@ -24,11 +24,15 @@ const app = new Hono()
                 .collection("users")
                 .doc(user.userid)
                 .collection("events")
+                .where("serverTimestamp", ">", new Date(updatedAt))
                 .orderBy("serverTimestamp")
                 .orderBy("id")
-                .where("serverTimestamp", ">", Timestamp.fromDate(new Date(updatedAt)))
                 .limit(limit ?? 10)
-                .get();
+                .get()
+                .catch((e) => {
+                    console.error(e);
+                    return { empty: true, docs: [] };
+                });
             const newCheckpoint = data.empty ? 
                 { id, updatedAt } : 
                 { id: lastOfArray(data.docs)!.id, updatedAt: (lastOfArray(data.docs)!.data()['serverTimestamp'] as Timestamp).toMillis() };
