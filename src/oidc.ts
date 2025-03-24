@@ -10,7 +10,7 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { HTTPException } from "hono/http-exception";
 import { addSeconds } from "date-fns";
-import {cors} from 'hono/cors';
+import { cors } from "hono/cors";
 
 // Environment validation
 if (!process.env["NTHU_OAUTH_CLIENT_ID"])
@@ -32,17 +32,22 @@ const VALID_SCOPES = [
   "openid", // sub
   "profile", // name, name_en, inschool
   "email", // email
-  "kv"
+  "kv",
 ];
 
 const app = new Hono()
-  .use('*', 
+  .use(
+    "*",
     cors({
-      origin: ['http://localhost:3000', 'https://nthumods.com', 'https://course.nthumods.com'],
-      allowHeaders: ['Authorization', 'Content-Type'],
-      allowMethods: ['GET', 'POST'],
+      origin: [
+        "http://localhost:3000",
+        "https://nthumods.com",
+        "https://course.nthumods.com",
+      ],
+      allowHeaders: ["Authorization", "Content-Type"],
+      allowMethods: ["GET", "POST"],
       credentials: true,
-    })
+    }),
   )
   .get("/.well-known/openid-configuration", (c) => {
     return c.json({
@@ -61,7 +66,10 @@ const app = new Hono()
     const { JWT_PUBLIC_KEY } = env<{
       JWT_PUBLIC_KEY: string;
     }>(c);
-    const publicKey = await importSPKI(JWT_PUBLIC_KEY.replace(/\\n/g, "\n"), "RS256");
+    const publicKey = await importSPKI(
+      JWT_PUBLIC_KEY.replace(/\\n/g, "\n"),
+      "RS256",
+    );
     const jwk = await exportJWK(publicKey);
     jwk.kid = "1";
     jwk.use = "sig";
@@ -76,13 +84,16 @@ const app = new Hono()
       z.object({
         client_id: z.string(),
         redirect_uri: z.string(),
-        scope: z.string().transform((scope) => {
-          const scopes = scope.split(" ");
-          if (!scopes.every((scope) => VALID_SCOPES.includes(scope))) {
-            throw new Error("Invalid scopes");
-          }
-          return scopes;
-        }).pipe(z.string().array()),
+        scope: z
+          .string()
+          .transform((scope) => {
+            const scopes = scope.split(" ");
+            if (!scopes.every((scope) => VALID_SCOPES.includes(scope))) {
+              throw new Error("Invalid scopes");
+            }
+            return scopes;
+          })
+          .pipe(z.string().array()),
         state: z.string().optional(),
         response_type: z.string(),
         nonce: z.string().optional(),
@@ -156,7 +167,7 @@ const app = new Hono()
       });
 
       // @ts-ignore
-      return await nthuAuthMiddleware(c, async () => { });
+      return await nthuAuthMiddleware(c, async () => {});
     },
   )
   .get(
@@ -188,7 +199,7 @@ const app = new Hono()
     async (c) => {
       const user = c.var.user;
       if (!user?.userid) return c.json({ error: "User ID not available" }, 400);
-      
+
       const { state } = c.req.valid("query");
 
       const authRequest = await prisma.authRequest.findUnique({
@@ -198,7 +209,12 @@ const app = new Hono()
         return c.json({ error: "invalid_request" }, 400);
       }
 
-      const { clientId: client_id, redirectUri: redirect_uri, scopes, clientState } = authRequest;
+      const {
+        clientId: client_id,
+        redirectUri: redirect_uri,
+        scopes,
+        clientState,
+      } = authRequest;
 
       // Get client from Prisma
       const client = await prisma.client.findUnique({
@@ -220,7 +236,10 @@ const app = new Hono()
       }
 
       // check if the requested scopes is contained within the client scopes
-      if (!scopes.every((s) => client.scopes.includes(s)) && !scopes.includes("openid")) {
+      if (
+        !scopes.every((s) => client.scopes.includes(s)) &&
+        !scopes.includes("openid")
+      ) {
         return c.json({ error: "invalid_scope" }, 400);
       }
 
@@ -255,7 +274,7 @@ const app = new Hono()
           clientId: client_id,
           redirectUri: redirect_uri,
           expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5-minute expiry
-          scopes: scopes
+          scopes: scopes,
         },
       });
 
@@ -269,13 +288,15 @@ const app = new Hono()
     zValidator(
       "form",
       z.union([
-        z.object({ // for grant_type: authorization_code
+        z.object({
+          // for grant_type: authorization_code
           grant_type: z.literal("authorization_code"),
           code: z.string().optional(),
           redirect_uri: z.string(),
           client_id: z.string(),
         }),
-        z.object({ // for grant_type: refresh_token
+        z.object({
+          // for grant_type: refresh_token
           grant_type: z.literal("refresh_token"),
           refresh_token: z.string(),
           scope: z.string().optional(),
@@ -283,13 +304,15 @@ const app = new Hono()
       ]),
     ),
     async (c) => {
-      const { JWT_PRIVATE_KEY } =
-        env<{
-          JWT_PRIVATE_KEY: string;
-        }>(c);
+      const { JWT_PRIVATE_KEY } = env<{
+        JWT_PRIVATE_KEY: string;
+      }>(c);
 
       // Convert keys to buffers
-      const privateKey = await importPKCS8(JWT_PRIVATE_KEY.replace(/\\n/g, "\n"), 'RS256');
+      const privateKey = await importPKCS8(
+        JWT_PRIVATE_KEY.replace(/\\n/g, "\n"),
+        "RS256",
+      );
 
       const form = c.req.valid("form");
 
@@ -297,16 +320,17 @@ const app = new Hono()
       c.res.headers.set("Cache-Control", "no-store");
       c.res.headers.set("Pragma", "no-cache");
 
-
       /* grant_type: authorization_code
-        * This is the authorization code flow.
-        * The client sends an authorization code to the server to get an access token.
-        * The authorization code is a short-lived token that can be used only once.
-        * id_token is returned in this flow.
-        */
+       * This is the authorization code flow.
+       * The client sends an authorization code to the server to get an access token.
+       * The authorization code is a short-lived token that can be used only once.
+       * id_token is returned in this flow.
+       */
       if (form.grant_type === "authorization_code") {
         if (!form.code) return c.json({ error: "invalid_request" }, 400);
-        const authCode = await prisma.authCode.findUnique({ where: { code: form.code } });
+        const authCode = await prisma.authCode.findUnique({
+          where: { code: form.code },
+        });
         if (!authCode || authCode.expiresAt < new Date()) {
           return c.json({ error: "invalid_grant" }, 400);
         }
@@ -325,7 +349,7 @@ const app = new Hono()
           where: { id: authCode.userId },
         });
         if (!user) return c.json({ error: "server_error" }, 500);
-        
+
         // Generate refresh token and access token string, save to prisma
         const refreshToken = crypto.randomUUID();
         const accessToken = crypto.randomUUID();
@@ -346,7 +370,7 @@ const app = new Hono()
             userId: user.id,
             clientId: authCode.clientId,
             expiresAt: addSeconds(new Date(), accessTokenExpiry),
-            scopes: authCode.scopes
+            scopes: authCode.scopes,
           },
         });
         await prisma.$transaction([insertRefreshToken, insertAccessToken]);
@@ -361,20 +385,25 @@ const app = new Hono()
         then take the left-most 128 bits and base64url encode them. 
         The at_hash value is a case sensitive string.
         */
-       const at_hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(accessToken))
-       .then((hash) => {
-          const hashArray = Array.from(new Uint8Array(hash));
-          const leftHalf = hashArray.slice(0, hashArray.length / 2);
-          return crypto.subtle.digest("SHA-256", new Uint8Array(leftHalf));
-        })
-        .then((leftHash) => {
-          return btoa(String.fromCharCode(...new Uint8Array(leftHash)))
-        });
+        const at_hash = await crypto.subtle
+          .digest("SHA-256", new TextEncoder().encode(accessToken))
+          .then((hash) => {
+            const hashArray = Array.from(new Uint8Array(hash));
+            const leftHalf = hashArray.slice(0, hashArray.length / 2);
+            return crypto.subtle.digest("SHA-256", new Uint8Array(leftHalf));
+          })
+          .then((leftHash) => {
+            return btoa(String.fromCharCode(...new Uint8Array(leftHash)));
+          });
 
         const idToken = await new SignJWT({
-          ...authCode.scopes.includes("openid") && { sub: user.userid },
-          ...authCode.scopes.includes("profile") && { name: user.name, name_en: user.nameEn, inschool: user.inschool },
-          ...authCode.scopes.includes("email") && { email: user.email },
+          ...(authCode.scopes.includes("openid") && { sub: user.userid }),
+          ...(authCode.scopes.includes("profile") && {
+            name: user.name,
+            name_en: user.nameEn,
+            inschool: user.inschool,
+          }),
+          ...(authCode.scopes.includes("email") && { email: user.email }),
           at_hash,
         })
           .setProtectedHeader({ alg: "RS256", kid: "1" })
@@ -404,14 +433,13 @@ const app = new Hono()
           token_type: "Bearer",
           expires_in: 15 * 60,
         });
-      }
-      /* grant_type: refresh_token 
-        * This is the refresh token flow. 
-        * The client sends a refresh token to the server to get a new access token.
-        * The refresh token is a long-lived token that can be used to get a new access token.
-        * id_token is not returned in this flow.
-      */
-      else if (form.grant_type === "refresh_token") {
+      } else if (form.grant_type === "refresh_token") {
+      /* grant_type: refresh_token
+       * This is the refresh token flow.
+       * The client sends a refresh token to the server to get a new access token.
+       * The refresh token is a long-lived token that can be used to get a new access token.
+       * id_token is not returned in this flow.
+       */
         const { refresh_token } = form;
         if (!refresh_token) return c.json({ error: "invalid_request" }, 400);
         try {
@@ -458,7 +486,11 @@ const app = new Hono()
               scopes: token.scopes,
             },
           });
-          await prisma.$transaction([deleteOldToken, insertRefreshToken, insertAccessToken]);
+          await prisma.$transaction([
+            deleteOldToken,
+            insertRefreshToken,
+            insertAccessToken,
+          ]);
 
           if (c.req.header("Origin")?.includes("nthumods.com")) {
             setCookie(c, "access_token", newAccessToken, {

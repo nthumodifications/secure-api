@@ -3,9 +3,7 @@ import { getRandomState } from "../utils/getRandomState";
 import { AuthFlow } from "./authFlow";
 import { getCookie, setCookie } from "hono/cookie";
 import { HTTPException } from "hono/http-exception";
-import { createMiddleware } from 'hono/factory'
-
-
+import { createMiddleware } from "hono/factory";
 
 const nthuAuth = (options: {
   scopes: Scopes[];
@@ -13,15 +11,16 @@ const nthuAuth = (options: {
   client_secret: string;
   redirect_uri?: string;
   state?: string;
-}) => createMiddleware<{
-  Variables: {
-    user: Partial<NthuUser> | undefined;
-    token: Token | undefined;
-    "refresh-token": Token | undefined;
-    "granted-scopes": string[] | undefined;
-    state: string | undefined;
-  }
-}>(async (c, next) => {
+}) =>
+  createMiddleware<{
+    Variables: {
+      user: Partial<NthuUser> | undefined;
+      token: Token | undefined;
+      "refresh-token": Token | undefined;
+      "granted-scopes": string[] | undefined;
+      state: string | undefined;
+    };
+  }>(async (c, next) => {
     const state = options.state ?? getRandomState();
 
     const auth = new AuthFlow({

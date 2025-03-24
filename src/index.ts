@@ -3,14 +3,13 @@ import oidc from "./oidc";
 import { logger } from "hono/logger";
 import api from "./api";
 
-
 export const app = new Hono()
   .use(logger())
   .get("/", async (c) => {
     return c.text("Hello, world!");
   })
   .route("/", oidc)
-  .route('/api', api);
+  .route("/api", api);
 
 export default {
   port: 5002,

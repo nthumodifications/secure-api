@@ -3,15 +3,15 @@ import { PrismaClient, type User } from "@prisma/client";
 import { getCookie } from "hono/cookie";
 import { createMiddleware } from "hono/factory";
 
-
 const prisma = new PrismaClient();
 
 // Middleware to check authentication and scopes
-export const requireAuth = (requiredScopes: string[] = []) => createMiddleware<{
-  Variables: {
-    user: User;
-  }
-}>(async (c, next) => {
+export const requireAuth = (requiredScopes: string[] = []) =>
+  createMiddleware<{
+    Variables: {
+      user: User;
+    };
+  }>(async (c, next) => {
     // Extract access_token from cookie or Authorization header
     const accessToken =
       c.req.header("Authorization")?.split(" ")[1] ||
@@ -32,7 +32,7 @@ export const requireAuth = (requiredScopes: string[] = []) => createMiddleware<{
       if (!token) throw new Error("Token not found");
       if (token.expiresAt < new Date()) throw new Error("Token expired");
 
-;     const user = await prisma.user.findUnique({
+      const user = await prisma.user.findUnique({
         where: { id: token.userId },
       });
 
