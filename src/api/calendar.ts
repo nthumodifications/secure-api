@@ -26,6 +26,8 @@ const app = new Hono()
                 .where("serverTimestamp", ">", updatedAt)
                 .limit(limit ?? 10)
                 .get();
+            console.log('path', `users/${user.userid}/events`);
+            console.log(data);
             const newCheckpoint = data.empty ? { id, updatedAt } : { id: data.docs[data.docs.length - 1].id, updatedAt: (data.docs[data.docs.length - 1].data()['serverTimestamp'] as Timestamp).toMillis() };
             return c.json({
                 events: data.docs.map((doc) => doc.data()).map(({serverTimestamp, ...doc}) => ({ ...doc, id: doc['id'] })),
