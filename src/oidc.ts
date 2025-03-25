@@ -191,6 +191,7 @@ const app = new Hono()
 
       // check if __session exists
       let sessionId = getCookie(c, "__session");
+      console.log('Session ID:', sessionId);
       
       if (sessionId) {
         // get session on prisma
@@ -198,18 +199,23 @@ const app = new Hono()
           where: { sessionId },
         });
 
+        console.log('Session:', session);
+
         // check if session exists
         if (session) {
           if (session.expiresAt < new Date()) {
+            console.log('Session expired');
             await prisma.authSessions.delete({
               where: { sessionId },
             });
             sessionId = undefined;
           }
           else if (session.state == 'UNAUTHENTICATED' || !session.userId) {
+            console.log('Session unauthenticated');
             // state unauthenticated, ignore. 
           }
           else {
+            console.log('Session authenticated');
             // resume session, we mint a authcode and redirect back to client
             const code = crypto.randomUUID();
             await prisma.authCode.create({
