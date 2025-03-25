@@ -18,8 +18,9 @@ model User {
   lmsid     String?
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
-  authCodes AuthCode[]
+  authSessions AuthSessions[]
   tokens    Token[]
+  authCodes AuthCode[]
 }
 
 model AuthCode {
@@ -33,11 +34,15 @@ model AuthCode {
   nonce       String?
   codeChallenge String?
   codeChallengeMethod String?
+  responseMode String?
+  responseType String[]
+  createdAt   DateTime @default(now())
   user        User     @relation(fields: [userId], references: [id])
 }
 
 model AuthRequest {
   id          String   @id @default(uuid())
+  sessionId   String
   clientId    String 
   redirectUri String
   scopes      String[]
@@ -48,15 +53,11 @@ model AuthRequest {
   codeChallengeMethod String?
   responseMode String?
   responseType String[]
+  createdAt   DateTime @default(now())
+  session     AuthSessions @relation(fields: [sessionId], references: [id])
 }
 
-model Client {
-  id           String   @id @default(uuid())
-  clientId     String   @unique
-  redirectUris String[]
-  clientSecret String? // Optional, for confidential clients
-  scopes       String[]
-}
+
 
 enum TokenType {
   ACCESS
@@ -65,12 +66,37 @@ enum TokenType {
 
 model Token {
   id        String    @id @default(uuid())
+  userId    String
   token     String    @unique
   type      TokenType
-  userId    String
   clientId  String
   scopes    String[]
   expiresAt DateTime
   createdAt DateTime  @default(now())
-  user      User      @relation(fields: [userId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
+}
+
+
+enum AuthSessionState {
+  UNAUTHENTICATED
+  AUTHENTICATED
+}
+
+model AuthSessions {
+  id          String   @id @default(uuid())
+  sessionId   String   @unique
+  createdAt   DateTime @default(now())
+  state      AuthSessionState
+  expiresAt   DateTime
+  userId      String?
+  authenticatedAt DateTime?
+  authRequests AuthRequest[]
+  user        User?     @relation(fields: [userId], references: [id])
+}
+model Client {
+  id           String   @id @default(uuid())
+  clientId     String   @unique
+  redirectUris String[]
+  clientSecret String? // Optional, for confidential clients
+  scopes       String[]
 }

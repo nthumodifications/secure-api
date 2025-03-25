@@ -26,6 +26,7 @@ const prisma = new PrismaClient();
 const ISSUER = "https://auth.nthumods.com";
 const accessTokenExpiry: number = 30 * 60; // 30 minutes
 const refreshTokenExpiry: number = 30 * 24 * 60 * 60; // 30 days
+const sessionExpiry: number = 180 * 24 * 60 * 60; // 180 days
 const ID_TOKEN_EXPIRY = "1h";
 
 const VALID_SCOPES = [
@@ -188,12 +189,74 @@ const app = new Hono()
         return c.json({ error: "invalid_request" }, 400);
       }
 
+      // check if __session exists
+      let sessionId = getCookie(c, "__session");
+      
+      if (sessionId) {
+        // get session on prisma
+        const session = await prisma.authSessions.findUnique({
+          where: { sessionId },
+        });
+
+        // check if session exists
+        if (session) {
+          if (session.expiresAt < new Date()) {
+            await prisma.authSessions.delete({
+              where: { sessionId },
+            });
+            sessionId = undefined;
+          }
+          else if (session.state == 'UNAUTHENTICATED' || !session.userId) {
+            // state unauthenticated, ignore. 
+          }
+          else {
+            // resume session, we mint a authcode and redirect back to client
+            const code = crypto.randomUUID();
+            await prisma.authCode.create({
+              data: {
+                code,
+                userId: session.userId,
+                clientId: client_id,
+                redirectUri: redirect_uri,
+                expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5-minute expiry
+                scopes: scope,
+                nonce: nonce,
+                codeChallenge: code_challenge,
+                codeChallengeMethod: code_challenge_method,
+              },
+            });
+
+            return c.redirect(
+              `${redirect_uri}?code=${code}&state=${clientState}`,
+            )
+          }
+        }
+      }
+
+      if (!sessionId) {
+        sessionId = crypto.randomUUID();
+        setCookie(c, "__session", sessionId, {
+          maxAge: sessionExpiry,
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "Strict",
+        });
+        await prisma.authSessions.create({
+          data: {
+            expiresAt: addSeconds(new Date(), sessionExpiry),
+            sessionId,
+            state: 'UNAUTHENTICATED',
+          },
+        });
+      }
+
       // create own state
       const newState = crypto.randomUUID();
 
       // Store Authentication Request to AuthRequest table
       const authRequest = await prisma.authRequest.create({
         data: {
+          sessionId: sessionId,
           clientId: client_id,
           redirectUri: redirect_uri,
           scopes: scope,
@@ -257,6 +320,41 @@ const app = new Hono()
         return c.json({ error: "invalid_request" }, 400);
       }
 
+      // Authentication Approved
+
+      
+
+      // Store or update user in Prisma
+      const upsertedUser = await prisma.user.upsert({
+        where: { userid: user.userid },
+        update: {
+          name: user.name || "",
+          nameEn: user.name_en || "",
+          email: user.email || "",
+          inschool: user.inschool || false,
+          cid: user.cid,
+          lmsid: user.lmsid,
+        },
+        create: {
+          userid: user.userid,
+          name: user.name || "",
+          nameEn: user.name_en || "",
+          email: user.email || "",
+          inschool: user.inschool || false,
+          cid: user.cid,
+          lmsid: user.lmsid,
+        },
+      });
+
+      await prisma.authSessions.update({
+        where: { sessionId: authRequest.sessionId },
+        data: {
+          state: 'AUTHENTICATED',
+          userId: user.userid,
+          expiresAt: addSeconds(new Date(), sessionExpiry),
+        },
+      })
+
       const {
         clientId: client_id,
         redirectUri: redirect_uri,
@@ -291,34 +389,12 @@ const app = new Hono()
         return c.json({ error: "invalid_scope" }, 400);
       }
 
-      // Store or update user in Prisma
-      const upsertedUser = await prisma.user.upsert({
-        where: { userid: user.userid },
-        update: {
-          name: user.name || "",
-          nameEn: user.name_en || "",
-          email: user.email || "",
-          inschool: user.inschool || false,
-          cid: user.cid,
-          lmsid: user.lmsid,
-        },
-        create: {
-          userid: user.userid,
-          name: user.name || "",
-          nameEn: user.name_en || "",
-          email: user.email || "",
-          inschool: user.inschool || false,
-          cid: user.cid,
-          lmsid: user.lmsid,
-        },
-      });
-
       // Generate and store auth code
       const code = crypto.randomUUID();
       await prisma.authCode.create({
         data: {
           code,
-          userId: upsertedUser.id,
+          userId: upsertedUser.userid,
           clientId: client_id,
           redirectUri: redirect_uri,
           expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5-minute expiry
