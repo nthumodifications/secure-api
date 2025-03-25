@@ -692,33 +692,71 @@ const app = new Hono()
       return c.json({ error: "invalid_token" }, 401);
     }
   })
-  .post("/logout", 
+  .get("/logout", 
     zValidator(
       'query',
       z.object({
-        id_token_hint: z.string().optional(),
+        id_token_hint: z.string(),
         logout_hint: z.string().optional(),
         client_id: z.string().optional(),
-        post_logout_redirect_uri: z.string().optional(),
+        post_logout_redirect_uri: z.string(),
         state: z.string().optional(),
       }),
     ),
     async (c) => {
-      // Clear session cookie
-      const sessionId = getCookie(c, "__session");
+      // validate id_token_hint, get the aud as client id
+      const { id_token_hint, post_logout_redirect_uri, state } = c.req.valid('query');
+      const { JWT_PUBLIC_KEY } = env<{
+        JWT_PUBLIC_KEY: string;
+      }>(c);
 
-      if (sessionId) {
-        await prisma.authSessions.delete({
-          where: { sessionId },
+      const publicKey = await importSPKI(
+        JWT_PUBLIC_KEY.replace(/\\n/g, "\n"),
+        "RS256",
+      );
+
+      try {
+        const { payload } = await jwtVerify(id_token_hint, publicKey, {
+          algorithms: ["RS256"],
+          issuer: ISSUER,
         });
-        setCookie(c, "__session", "", {
-          maxAge: 0,
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "Lax",
+        if (!payload.aud) {
+          return c.json({ error: "invalid_request" }, 400);
+        }
+        const client_id = payload.aud;
+        if (Array.isArray(client_id)) {
+          return c.json({ error: "invalid_request" }, 400);
+        }
+        const client = await prisma.client.findUnique({
+          where: { clientId: client_id },
         });
+        if (!client) {
+          return c.json({ error: "invalid_client" }, 400);
+        }
+          
+        // Verify post_login_redirect_uri is allowed
+        if (!client.logoutUris.includes(post_logout_redirect_uri)) {
+          return c.json({ error: "invalid_request" }, 400);
+        }
+
+        // Clear session cookie
+        const sessionId = getCookie(c, "__session");
+
+        if (sessionId) {
+          await prisma.authSessions.delete({
+            where: { sessionId },
+          });
+          setCookie(c, "__session", "", {
+            maxAge: 0,
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "Lax",
+          });
+        }
+        return c.redirect(post_logout_redirect_uri + (state ? `?state=${state}` : ''));
+      } catch (error) {
+        return c.json({ error: "invalid_request" }, 400);
       }
-      return c.json({ message: "Logged out" });
     });
 
 export default app;

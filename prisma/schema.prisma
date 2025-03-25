@@ -97,6 +97,7 @@ model Client {
   id           String   @id @default(uuid())
   clientId     String   @unique
   redirectUris String[]
+  logoutUris   String[]
   clientSecret String? // Optional, for confidential clients
   scopes       String[]
 }
