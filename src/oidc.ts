@@ -366,7 +366,7 @@ const app = new Hono()
         maxAge: sessionExpiry,
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        sameSite: "Strict",
+        sameSite: "Lax",
       });
 
       const {
@@ -578,17 +578,6 @@ const app = new Hono()
         // Delete used auth code
         await prisma.authCode.delete({ where: { code: form.code } });
 
-        if (c.req.header("Origin")?.includes("nthumods.com")) {
-          setCookie(c, "access_token", accessToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "Strict",
-            maxAge: 15 * 60,
-            path: "/",
-            domain: ".nthumods.com",
-          });
-        }
-
         return c.json({
           access_token: accessToken,
           refresh_token: refreshToken,
@@ -655,16 +644,6 @@ const app = new Hono()
             insertAccessToken,
           ]);
 
-          if (c.req.header("Origin")?.includes("nthumods.com")) {
-            setCookie(c, "access_token", newAccessToken, {
-              httpOnly: true,
-              secure: process.env.NODE_ENV === "production",
-              sameSite: "Strict",
-              maxAge: 15 * 60,
-              path: "/",
-              domain: ".nthumods.com",
-            });
-          }
           return c.json({
             access_token: newAccessToken,
             refresh_token: newRefreshToken,
