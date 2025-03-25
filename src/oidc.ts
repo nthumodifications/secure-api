@@ -326,7 +326,7 @@ const app = new Hono()
 
       // Store or update user in Prisma
       const upsertedUser = await prisma.user.upsert({
-        where: { userid: user.userid },
+        where: { userId: user.userid },
         update: {
           name: user.name || "",
           nameEn: user.name_en || "",
@@ -336,7 +336,7 @@ const app = new Hono()
           lmsid: user.lmsid,
         },
         create: {
-          userid: user.userid,
+          userId: user.userid,
           name: user.name || "",
           nameEn: user.name_en || "",
           email: user.email || "",
@@ -354,6 +354,13 @@ const app = new Hono()
           expiresAt: addSeconds(new Date(), sessionExpiry),
         },
       })
+      
+      setCookie(c, "__session", authRequest.sessionId, {
+        maxAge: sessionExpiry,
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "Strict",
+      });
 
       const {
         clientId: client_id,
@@ -394,7 +401,7 @@ const app = new Hono()
       await prisma.authCode.create({
         data: {
           code,
-          userId: upsertedUser.userid,
+          userId: upsertedUser.userId,
           clientId: client_id,
           redirectUri: redirect_uri,
           expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5-minute expiry
@@ -494,7 +501,7 @@ const app = new Hono()
         }
 
         const user = await prisma.user.findUnique({
-          where: { id: authCode.userId },
+          where: { userId: authCode.userId },
         });
         if (!user) return c.json({ error: "server_error" }, 500);
 
@@ -505,7 +512,7 @@ const app = new Hono()
           data: {
             token: refreshToken,
             type: "REFRESH",
-            userId: user.id,
+            userId: user.userId,
             clientId: authCode.clientId,
             expiresAt: addSeconds(new Date(), refreshTokenExpiry),
             scopes: authCode.scopes,
@@ -515,7 +522,7 @@ const app = new Hono()
           data: {
             token: accessToken,
             type: "ACCESS",
-            userId: user.id,
+            userId: user.userId,
             clientId: authCode.clientId,
             expiresAt: addSeconds(new Date(), accessTokenExpiry),
             scopes: authCode.scopes,
@@ -545,7 +552,7 @@ const app = new Hono()
           });
 
         const idToken = await new SignJWT({
-          ...(authCode.scopes.includes("openid") && { sub: user.userid }),
+          ...(authCode.scopes.includes("openid") && { sub: user.userId }),
           ...(authCode.scopes.includes("profile") && {
             name: user.name,
             name_en: user.nameEn,
@@ -604,7 +611,7 @@ const app = new Hono()
           }
 
           const user = await prisma.user.findUnique({
-            where: { id: token.userId },
+            where: { userId: token.userId },
           });
           if (!user) return c.json({ error: "server_error" }, 500);
 
@@ -619,7 +626,7 @@ const app = new Hono()
             data: {
               token: newRefreshToken,
               type: "REFRESH",
-              userId: user.id,
+              userId: user.userId,
               clientId: token.clientId,
               expiresAt: addSeconds(new Date(), refreshTokenExpiry),
               scopes: token.scopes,
@@ -629,7 +636,7 @@ const app = new Hono()
             data: {
               token: newAccessToken,
               type: "ACCESS",
-              userId: user.id,
+              userId: user.userId,
               clientId: token.clientId,
               expiresAt: addSeconds(new Date(), accessTokenExpiry),
               scopes: token.scopes,
@@ -684,12 +691,12 @@ const app = new Hono()
       }
 
       const user = await prisma.user.findUnique({
-        where: { id: token.userId },
+        where: { userId: token.userId },
       });
       if (!user) return c.json({ error: "server_error" }, 500);
 
       return c.json({
-        sub: user.userid,
+        sub: user.userId,
         name: user.name,
         email: user.email,
         inschool: user.inschool,

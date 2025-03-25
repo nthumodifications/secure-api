@@ -30,7 +30,7 @@ const app = new Hono()
       // Fetch data from Firestore
       const data = await adminFirestore
         .collection("users")
-        .doc(c.var.user.userid)
+        .doc(c.var.user.userId)
         .collection("storage")
         .doc(key)
         .get();
@@ -64,7 +64,7 @@ const app = new Hono()
       // Update data in Firestore
       await adminFirestore
         .collection("users")
-        .doc(c.var.user.userid)
+        .doc(c.var.user.userId)
         .collection("storage")
         .doc(key)
         .set({ value });

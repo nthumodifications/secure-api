@@ -54,7 +54,7 @@ const app = new Hono()
       let sameTimeQuery: Query | undefined;
       const pullQuery = adminFirestore
         .collection("users")
-        .doc(user.userid)
+        .doc(user.userId)
         .collection("events");
 
       const lastPulledCheckpoint = serverTimestamp
@@ -156,7 +156,7 @@ const app = new Hono()
       const user = c.var.user;
       const eventsRef = adminFirestore
         .collection("users")
-        .doc(user.userid)
+        .doc(user.userId)
         .collection("events");
 
       const writeRowsById: ById<RxReplicationWriteToMasterRow<EventDocType>> =
@@ -280,7 +280,7 @@ const app = new Hono()
       let sameTimeQuery: Query | undefined;
       const pullQuery = adminFirestore
         .collection("users")
-        .doc(user.userid)
+        .doc(user.userId)
         .collection("timetablesync");
 
       const lastPulledCheckpoint = serverTimestamp
@@ -382,7 +382,7 @@ const app = new Hono()
       const user = c.var.user;
       const timetableSyncRef = adminFirestore
         .collection("users")
-        .doc(user.userid)
+        .doc(user.userId)
         .collection("timetablesync");
 
       const writeRowsById: ById<

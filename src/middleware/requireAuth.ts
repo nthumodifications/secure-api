@@ -32,7 +32,7 @@ export const requireAuth = (requiredScopes: string[] = []) =>
       if (token.expiresAt < new Date()) throw new Error("Token expired");
 
       const user = await prisma.user.findUnique({
-        where: { id: token.userId },
+        where: { userId: token.userId },
       });
 
       if (!user) throw new Error("User not found");
