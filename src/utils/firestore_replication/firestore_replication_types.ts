@@ -10,6 +10,8 @@ export type EventDocType = {
 
 export type TimetableSyncDocType = {
   semester: string;
-}
+};
 
-export type GetQuery<RxDocType> = (ids: string[]) => Promise<QueryDocumentSnapshot<RxDocType>[]>;
+export type GetQuery<RxDocType> = (
+  ids: string[],
+) => Promise<QueryDocumentSnapshot<RxDocType>[]>;

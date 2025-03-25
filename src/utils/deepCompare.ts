@@ -1,5 +1,9 @@
-
-export function deepCompare(a: any, b: any, maxDepth: number = 100, currentDepth: number = 0): boolean {
+export function deepCompare(
+  a: any,
+  b: any,
+  maxDepth: number = 100,
+  currentDepth: number = 0,
+): boolean {
   // Prevent infinite recursion with depth check
   if (currentDepth > maxDepth) return false;
 
@@ -8,15 +12,15 @@ export function deepCompare(a: any, b: any, maxDepth: number = 100, currentDepth
 
   // If either is null/undefined but not both (we already checked for both above)
   if (a == null || b == null) return false;
-  
+
   // If types don't match
   if (typeof a !== typeof b) return false;
-  
+
   // Check if one is an array and the other isn't
   if (Array.isArray(a) !== Array.isArray(b)) return false;
 
   // Handle non-object types that aren't caught by strict equality above
-  if (typeof a !== 'object') return false;
+  if (typeof a !== "object") return false;
 
   // Special case for Date objects
   if (a instanceof Date && b instanceof Date) {
@@ -38,7 +42,9 @@ export function deepCompare(a: any, b: any, maxDepth: number = 100, currentDepth
 
   if (keysA.length !== keysB.length) return false;
 
-  return keysA.every(key => Object.prototype.hasOwnProperty.call(b, key) &&
-    deepCompare(a[key], b[key], maxDepth, currentDepth + 1)
+  return keysA.every(
+    (key) =>
+      Object.prototype.hasOwnProperty.call(b, key) &&
+      deepCompare(a[key], b[key], maxDepth, currentDepth + 1),
   );
 }

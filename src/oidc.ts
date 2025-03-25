@@ -61,7 +61,7 @@ const app = new Hono()
       grant_types_supported: ["authorization_code", "refresh_token"],
       subject_types_supported: ["public"],
       id_token_signing_alg_values_supported: ["RS256"],
-      scopes_supported: VALID_SCOPES
+      scopes_supported: VALID_SCOPES,
     });
   })
   .get("/.well-known/jwks.json", async (c) => {
@@ -111,6 +111,9 @@ const app = new Hono()
         scope,
         state: clientState,
         response_type,
+        nonce,
+        code_challenge,
+        code_challenge_method,
       } = c.req.valid("query");
 
       // Basic validation
@@ -153,9 +156,9 @@ const app = new Hono()
           scopes: scope,
           state: newState,
           clientState: clientState,
-          nonce: c.req.query("nonce"),
-          codeChallenge: c.req.query("code_challenge"),
-          codeChallengeMethod: c.req.query("code_challenge_method"),
+          nonce: nonce,
+          codeChallenge: code_challenge,
+          codeChallengeMethod: code_challenge_method,
         },
       });
 
@@ -277,6 +280,9 @@ const app = new Hono()
           redirectUri: redirect_uri,
           expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5-minute expiry
           scopes: scopes,
+          nonce: authRequest.nonce,
+          codeChallenge: authRequest.codeChallenge,
+          codeChallengeMethod: authRequest.codeChallengeMethod,
         },
       });
 
@@ -296,6 +302,7 @@ const app = new Hono()
           code: z.string().optional(),
           redirect_uri: z.string(),
           client_id: z.string(),
+          code_verifier: z.string().optional(),
         }),
         z.object({
           // for grant_type: refresh_token
@@ -345,6 +352,31 @@ const app = new Hono()
         // Check if redirect_uri matches
         if (authCode.redirectUri !== form.redirect_uri) {
           return c.json({ error: "invalid_request" }, 400);
+        }
+
+        // PKCE validation
+        if (authCode.codeChallenge) {
+          if (!form.code_verifier) {
+            return c.json({ error: "invalid_request" }, 400);
+          }
+          if (authCode.codeChallengeMethod == "S256") {
+            const verifier = form.code_verifier;
+            const challenge = await crypto
+              .subtle
+              .digest("SHA-256", new TextEncoder().encode(verifier))
+              .then((hash) => {
+                return btoa(String.fromCharCode(...new Uint8Array(hash)));
+              });
+            if (challenge !== authCode.codeChallenge) {
+              return c.json({ error: "invalid_request" }, 400);
+            }
+          } else if (authCode.codeChallengeMethod == "plain") {
+            if (form.code_verifier !== authCode.codeChallenge) {
+              return c.json({ error: "invalid_request" }, 400);
+            }
+          } else {
+            return c.json({ error: "invalid_request" }, 400);
+          }
         }
 
         const user = await prisma.user.findUnique({
@@ -407,6 +439,7 @@ const app = new Hono()
           }),
           ...(authCode.scopes.includes("email") && { email: user.email }),
           at_hash,
+          nonce: authCode.nonce,
         })
           .setProtectedHeader({ alg: "RS256", kid: "1" })
           .setIssuer(ISSUER)
@@ -436,12 +469,12 @@ const app = new Hono()
           expires_in: 15 * 60,
         });
       } else if (form.grant_type === "refresh_token") {
-      /* grant_type: refresh_token
-       * This is the refresh token flow.
-       * The client sends a refresh token to the server to get a new access token.
-       * The refresh token is a long-lived token that can be used to get a new access token.
-       * id_token is not returned in this flow.
-       */
+        /* grant_type: refresh_token
+         * This is the refresh token flow.
+         * The client sends a refresh token to the server to get a new access token.
+         * The refresh token is a long-lived token that can be used to get a new access token.
+         * id_token is not returned in this flow.
+         */
         const { refresh_token } = form;
         if (!refresh_token) return c.json({ error: "invalid_request" }, 400);
         try {

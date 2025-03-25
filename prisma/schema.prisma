@@ -30,6 +30,9 @@ model AuthCode {
   redirectUri String
   scopes      String[]
   expiresAt   DateTime
+  nonce       String?
+  codeChallenge String?
+  codeChallengeMethod String?
   user        User     @relation(fields: [userId], references: [id])
 }
 
