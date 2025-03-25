@@ -36,6 +36,44 @@ const VALID_SCOPES = [
   "calendar",
 ];
 
+async function verifyPKCE(codeVerifier: string, codeChallenge: string, codeChallengeMethod: string) {
+  // Input validation
+  if (!codeVerifier || !codeChallenge || !codeChallengeMethod) {
+      throw new Error('Missing required parameters');
+  }
+
+  // Only support S256 method
+  if (codeChallengeMethod.toUpperCase() !== 'S256') {
+      throw new Error('Unsupported code challenge method. Only S256 is supported');
+  }
+
+  // Verify code verifier meets basic requirements
+  const verifierRegex = /^[A-Za-z0-9\-._~]{43,128}$/;
+  if (!verifierRegex.test(codeVerifier)) {
+      throw new Error('Invalid code verifier format');
+  }
+
+  // Convert code verifier to ArrayBuffer for crypto operations
+  const encoder = new TextEncoder();
+  const verifierBuffer = encoder.encode(codeVerifier);
+
+  // Generate SHA-256 hash using Bun's Web Crypto API
+  const hashBuffer = await crypto.subtle.digest('SHA-256', verifierBuffer);
+
+  // Convert hash to base64 string
+  const base64String = btoa(String.fromCharCode(...new Uint8Array(hashBuffer)));
+
+  // Apply URL-safe transformations per RFC 7636
+  const generatedChallenge = base64String
+      .replace(/\+/g, '-')    // Replace + with -
+      .replace(/\//g, '_')    // Replace / with _
+      .replace(/=/g, '');     // Remove padding
+
+  // Simple string comparison
+  // Note: For production, consider implementing timing-safe comparison
+  return generatedChallenge === codeChallenge;
+}
+
 const app = new Hono()
   .use(
     "*",
@@ -143,6 +181,11 @@ const app = new Hono()
           },
           400,
         );
+      }
+
+      // only allow PCKE S256 method
+      if (code_challenge_method && code_challenge_method !== "S256") {
+        return c.json({ error: "invalid_request" }, 400);
       }
 
       // create own state
@@ -361,17 +404,12 @@ const app = new Hono()
           }
           if (authCode.codeChallengeMethod == "S256") {
             const verifier = form.code_verifier;
-            const challenge = await crypto
-              .subtle
-              .digest("SHA-256", new TextEncoder().encode(verifier))
-              .then((hash) => {
-                return btoa(String.fromCharCode(...new Uint8Array(hash)));
-              });
-            if (challenge !== authCode.codeChallenge) {
-              return c.json({ error: "invalid_request" }, 400);
-            }
-          } else if (authCode.codeChallengeMethod == "plain") {
-            if (form.code_verifier !== authCode.codeChallenge) {
+            const isValidPCKE = await verifyPKCE(
+              verifier,
+              authCode.codeChallenge,
+              authCode.codeChallengeMethod,
+            );
+            if (!isValidPCKE) {
               return c.json({ error: "invalid_request" }, 400);
             }
           } else {
