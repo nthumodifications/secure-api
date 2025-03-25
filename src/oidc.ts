@@ -238,6 +238,7 @@ const app = new Hono()
           }
         }
       }
+      console.log('session id not found, creating new session', sessionId);
 
       if (!sessionId) {
         sessionId = crypto.randomUUID();
