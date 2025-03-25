@@ -246,7 +246,7 @@ const app = new Hono()
           maxAge: sessionExpiry,
           httpOnly: true,
           secure: process.env.NODE_ENV === "production",
-          sameSite: "Strict",
+          sameSite: "Lax",
         });
         await prisma.authSessions.create({
           data: {
