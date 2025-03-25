@@ -100,6 +100,7 @@ const app = new Hono()
       grant_types_supported: ["authorization_code", "refresh_token"],
       subject_types_supported: ["public"],
       id_token_signing_alg_values_supported: ["RS256"],
+      end_session_endpoint: `${ISSUER}/logout`,
       scopes_supported: VALID_SCOPES,
     });
   })
@@ -691,15 +692,33 @@ const app = new Hono()
       return c.json({ error: "invalid_token" }, 401);
     }
   })
-  .post("/logout", async (c) => {
-    if (c.req.header("Origin")?.includes("nthumods.com")) {
-      setCookie(c, "access_token", "", {
-        maxAge: 0,
-        path: "/",
-        domain: ".nthumods.com",
-      });
-    }
-    return c.json({ message: "Logged out" });
-  });
+  .post("/logout", 
+    zValidator(
+      'query',
+      z.object({
+        id_token_hint: z.string().optional(),
+        logout_hint: z.string().optional(),
+        client_id: z.string().optional(),
+        post_logout_redirect_uri: z.string().optional(),
+        state: z.string().optional(),
+      }),
+    ),
+    async (c) => {
+      // Clear session cookie
+      const sessionId = getCookie(c, "__session");
+
+      if (sessionId) {
+        await prisma.authSessions.delete({
+          where: { sessionId },
+        });
+        setCookie(c, "__session", "", {
+          maxAge: 0,
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "Lax",
+        });
+      }
+      return c.json({ message: "Logged out" });
+    });
 
 export default app;
