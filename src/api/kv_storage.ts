@@ -52,12 +52,13 @@ const app = new Hono()
       "json",
       z.object({
         value: z.any(),
+        lastModified: z.number(),
       }),
     ),
     requireAuth(["kv"]),
     async (c) => {
       const { key } = c.req.valid("param");
-      const { value } = c.req.valid("json");
+      const { value, lastModified } = c.req.valid("json");
       if (!validKeys.includes(key)) {
         return c.json({ error: "Invalid key" }, 400);
       }
@@ -67,7 +68,7 @@ const app = new Hono()
         .doc(c.var.user.userId)
         .collection("storage")
         .doc(key)
-        .set({ value });
+        .set({ value, lastModified });
       return c.json({ success: true });
     },
   );
