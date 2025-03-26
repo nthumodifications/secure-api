@@ -9,7 +9,7 @@ import { z } from "zod";
 import { addSeconds } from "date-fns";
 import { cors } from "hono/cors";
 import { AuthConfirmation } from "./pages/authorize";
-import { serveStatic } from 'hono/bun'
+import { serveStatic } from "hono/bun";
 
 // Environment validation
 if (!process.env["NTHU_OAUTH_CLIENT_ID"])
@@ -37,21 +37,27 @@ const VALID_SCOPES = [
   "calendar",
 ];
 
-async function verifyPKCE(codeVerifier: string, codeChallenge: string, codeChallengeMethod: string) {
+async function verifyPKCE(
+  codeVerifier: string,
+  codeChallenge: string,
+  codeChallengeMethod: string,
+) {
   // Input validation
   if (!codeVerifier || !codeChallenge || !codeChallengeMethod) {
-      throw new Error('Missing required parameters');
+    throw new Error("Missing required parameters");
   }
 
   // Only support S256 method
-  if (codeChallengeMethod.toUpperCase() !== 'S256') {
-      throw new Error('Unsupported code challenge method. Only S256 is supported');
+  if (codeChallengeMethod.toUpperCase() !== "S256") {
+    throw new Error(
+      "Unsupported code challenge method. Only S256 is supported",
+    );
   }
 
   // Verify code verifier meets basic requirements
   const verifierRegex = /^[A-Za-z0-9\-._~]{43,128}$/;
   if (!verifierRegex.test(codeVerifier)) {
-      throw new Error('Invalid code verifier format');
+    throw new Error("Invalid code verifier format");
   }
 
   // Convert code verifier to ArrayBuffer for crypto operations
@@ -59,16 +65,16 @@ async function verifyPKCE(codeVerifier: string, codeChallenge: string, codeChall
   const verifierBuffer = encoder.encode(codeVerifier);
 
   // Generate SHA-256 hash using Bun's Web Crypto API
-  const hashBuffer = await crypto.subtle.digest('SHA-256', verifierBuffer);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", verifierBuffer);
 
   // Convert hash to base64 string
   const base64String = btoa(String.fromCharCode(...new Uint8Array(hashBuffer)));
 
   // Apply URL-safe transformations per RFC 7636
   const generatedChallenge = base64String
-      .replace(/\+/g, '-')    // Replace + with -
-      .replace(/\//g, '_')    // Replace / with _
-      .replace(/=/g, '');     // Remove padding
+    .replace(/\+/g, "-") // Replace + with -
+    .replace(/\//g, "_") // Replace / with _
+    .replace(/=/g, ""); // Remove padding
 
   // Simple string comparison
   // Note: For production, consider implementing timing-safe comparison
@@ -119,7 +125,7 @@ const app = new Hono()
     jwk.kty = "RSA";
     return c.json({ keys: [jwk] });
   })
-  .get('/output.css', serveStatic({ path: './src/pages/output.css' }))
+  .get("/output.css", serveStatic({ path: "./src/pages/output.css" }))
   .get(
     "/authorize",
     zValidator(
@@ -156,9 +162,10 @@ const app = new Hono()
         state: clientState,
         response_type,
         nonce,
+        ui_locales,
         code_challenge,
         code_challenge_method,
-        acceptTos
+        acceptTos,
       } = c.req.valid("query");
 
       // Basic validation
@@ -198,31 +205,29 @@ const app = new Hono()
 
       // check if __session exists
       let sessionId = getCookie(c, "__session");
-      console.log('Session ID:', sessionId);
-      
+      console.log("Session ID:", sessionId);
+
       if (sessionId) {
         // get session on prisma
         const session = await prisma.authSessions.findUnique({
           where: { sessionId },
         });
 
-        console.log('Session:', session);
+        console.log("Session:", session);
 
         // check if session exists
         if (session) {
           if (session.expiresAt < new Date()) {
-            console.log('Session expired');
+            console.log("Session expired");
             await prisma.authSessions.delete({
               where: { sessionId },
             });
             sessionId = undefined;
-          }
-          else if (session.state == 'UNAUTHENTICATED' || !session.userId) {
-            console.log('Session unauthenticated');
-            // state unauthenticated, ignore. 
-          }
-          else {
-            console.log('Session authenticated');
+          } else if (session.state == "UNAUTHENTICATED" || !session.userId) {
+            console.log("Session unauthenticated");
+            // state unauthenticated, ignore.
+          } else {
+            console.log("Session authenticated");
             // resume session, we mint a authcode and redirect back to client
             const code = crypto.randomUUID();
             await prisma.authCode.create({
@@ -241,18 +246,25 @@ const app = new Hono()
 
             return c.redirect(
               `${redirect_uri}?code=${code}&state=${clientState}`,
-            )
+            );
           }
         }
       }
 
       // if prompt=none, return error
       if (prompt === "none") {
-        return c.redirect(`${redirect_uri}?error=login_required&state=${clientState}`);
+        return c.redirect(
+          `${redirect_uri}?error=login_required&state=${clientState}`,
+        );
       }
 
       if (!sessionId && !acceptTos) {
-        return c.html(<AuthConfirmation {...c.req.valid("query")} scope={scope.join(" ")} />);
+        return c.html(
+          <AuthConfirmation
+            {...c.req.valid("query")}
+            scope={scope.join(" ")}
+          />,
+        );
       }
 
       // User has accepted TOS, create session
@@ -269,7 +281,7 @@ const app = new Hono()
           data: {
             expiresAt: addSeconds(new Date(), sessionExpiry),
             sessionId,
-            state: 'UNAUTHENTICATED',
+            state: "UNAUTHENTICATED",
           },
         });
       }
@@ -346,8 +358,6 @@ const app = new Hono()
 
       // Authentication Approved
 
-      
-
       // Store or update user in Prisma
       const upsertedUser = await prisma.user.upsert({
         where: { userId: user.userid },
@@ -373,12 +383,12 @@ const app = new Hono()
       await prisma.authSessions.update({
         where: { sessionId: authRequest.sessionId },
         data: {
-          state: 'AUTHENTICATED',
+          state: "AUTHENTICATED",
           userId: user.userid,
           expiresAt: addSeconds(new Date(), sessionExpiry),
         },
-      })
-      
+      });
+
       setCookie(c, "__session", authRequest.sessionId, {
         maxAge: sessionExpiry,
         httpOnly: true,
@@ -532,16 +542,18 @@ const app = new Hono()
         // Generate refresh token and access token string, save to prisma
         const refreshToken = crypto.randomUUID();
         const accessToken = crypto.randomUUID();
-        const insertRefreshToken = authCode.scopes.includes("offline_access") ? prisma.token.create({
-          data: {
-            token: refreshToken,
-            type: "REFRESH",
-            userId: user.userId,
-            clientId: authCode.clientId,
-            expiresAt: addSeconds(new Date(), refreshTokenExpiry),
-            scopes: authCode.scopes,
-          },
-        }) : undefined;
+        const insertRefreshToken = authCode.scopes.includes("offline_access")
+          ? prisma.token.create({
+              data: {
+                token: refreshToken,
+                type: "REFRESH",
+                userId: user.userId,
+                clientId: authCode.clientId,
+                expiresAt: addSeconds(new Date(), refreshTokenExpiry),
+                scopes: authCode.scopes,
+              },
+            })
+          : undefined;
         const insertAccessToken = prisma.token.create({
           data: {
             token: accessToken,
@@ -552,7 +564,10 @@ const app = new Hono()
             scopes: authCode.scopes,
           },
         });
-        await prisma.$transaction([insertAccessToken, ...(insertRefreshToken ? [insertRefreshToken] : [])]);
+        await prisma.$transaction([
+          insertAccessToken,
+          ...(insertRefreshToken ? [insertRefreshToken] : []),
+        ]);
 
         /*
         OPTIONAL. Access Token hash value. 
@@ -710,9 +725,10 @@ const app = new Hono()
       return c.json({ error: "invalid_token" }, 401);
     }
   })
-  .get("/logout", 
+  .get(
+    "/logout",
     zValidator(
-      'query',
+      "query",
       z.object({
         id_token_hint: z.string(),
         logout_hint: z.string().optional(),
@@ -723,39 +739,55 @@ const app = new Hono()
     ),
     async (c) => {
       // validate id_token_hint, get the aud as client id
-      const { id_token_hint, post_logout_redirect_uri, state } = c.req.valid('query');
+      const { id_token_hint, post_logout_redirect_uri, state } =
+        c.req.valid("query");
       const { JWT_PUBLIC_KEY } = env<{
         JWT_PUBLIC_KEY: string;
       }>(c);
 
       const publicKey = await importSPKI(
         JWT_PUBLIC_KEY.replace(/\\n/g, "\n"),
-          "RS256",
-        );
+        "RS256",
+      );
 
-        try {
-          const { payload } = await jwtVerify(id_token_hint, publicKey, {
+      try {
+        const { payload } = await jwtVerify(id_token_hint, publicKey, {
           algorithms: ["RS256"],
           issuer: ISSUER,
-          currentDate: new Date(0) // Should NOT verify expiry on logout
+          currentDate: new Date(0), // Should NOT verify expiry on logout
         });
         if (!payload.aud) {
-          return c.json({ error: "invalid_request", error_description: "Missing aud" }, 400);
+          return c.json(
+            { error: "invalid_request", error_description: "Missing aud" },
+            400,
+          );
         }
         const client_id = payload.aud;
         if (Array.isArray(client_id)) {
-          return c.json({ error: "invalid_request", error_description: "Multiple aud" }, 400);
+          return c.json(
+            { error: "invalid_request", error_description: "Multiple aud" },
+            400,
+          );
         }
         const client = await prisma.client.findUnique({
           where: { clientId: client_id },
         });
         if (!client) {
-          return c.json({ error: "invalid_client", error_description: "Client not found" }, 400);
+          return c.json(
+            { error: "invalid_client", error_description: "Client not found" },
+            400,
+          );
         }
-          
+
         // Verify post_login_redirect_uri is allowed
         if (!client.logoutUris.includes(post_logout_redirect_uri)) {
-          return c.json({ error: "invalid_request", error_description: "Invalid post_logout_redirect_uri" }, 400);
+          return c.json(
+            {
+              error: "invalid_request",
+              error_description: "Invalid post_logout_redirect_uri",
+            },
+            400,
+          );
         }
 
         // Clear session cookie
@@ -772,11 +804,20 @@ const app = new Hono()
             sameSite: "Lax",
           });
         }
-        return c.redirect(post_logout_redirect_uri + (state ? `?state=${state}` : ''));
+        return c.redirect(
+          post_logout_redirect_uri + (state ? `?state=${state}` : ""),
+        );
       } catch (error) {
         console.error("/logout error", error);
-        return c.json({ error: "invalid_request", error_description: "Invalid id_token_hint" }, 400);
+        return c.json(
+          {
+            error: "invalid_request",
+            error_description: "Invalid id_token_hint",
+          },
+          400,
+        );
       }
-    });
+    },
+  );
 
 export default app;
