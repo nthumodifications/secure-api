@@ -37,7 +37,7 @@ model AuthCode {
   responseMode String?
   responseType String[]
   createdAt   DateTime @default(now())
-  user        User     @relation(fields: [userId], references: [userId])
+  user        User     @relation(fields: [userId], references: [userId], onDelete: Cascade)
 }
 
 model AuthRequest {
@@ -54,7 +54,7 @@ model AuthRequest {
   responseMode String?
   responseType String[]
   createdAt   DateTime @default(now())
-  session     AuthSessions @relation(fields: [sessionId], references: [sessionId])
+  session     AuthSessions @relation(fields: [sessionId], references: [sessionId], onDelete: Cascade)
 }
 
 
@@ -73,7 +73,7 @@ model Token {
   scopes    String[]
   expiresAt DateTime
   createdAt DateTime  @default(now())
-  user     User     @relation(fields: [userId], references: [userId])
+  user     User     @relation(fields: [userId], references: [userId], onDelete: Cascade)
 }
 
 
@@ -91,7 +91,7 @@ model AuthSessions {
   userId      String?
   authenticatedAt DateTime?
   authRequests AuthRequest[]
-  user        User?     @relation(fields: [userId], references: [userId])
+  user        User?     @relation(fields: [userId], references: [userId], onDelete: Cascade)
 }
 model Client {
   id           String   @id @default(uuid())

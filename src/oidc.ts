@@ -722,14 +722,14 @@ const app = new Hono()
 
       const publicKey = await importSPKI(
         JWT_PUBLIC_KEY.replace(/\\n/g, "\n"),
-        "RS256",
-      );
+          "RS256",
+        );
 
-      try {
-        const { payload } = await jwtVerify(id_token_hint, publicKey, {
+        try {
+          const { payload } = await jwtVerify(id_token_hint, publicKey, {
           algorithms: ["RS256"],
           issuer: ISSUER,
-          currentDate: new Date(0)
+          currentDate: new Date(0) // Should NOT verify expiry on logout
         });
         if (!payload.aud) {
           return c.json({ error: "invalid_request", error_description: "Missing aud" }, 400);
