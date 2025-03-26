@@ -1,4 +1,4 @@
-import { useState, type FC } from "hono/jsx";
+import { type FC } from "hono/jsx";
 import NTHUModsLogo from "./NTHUModsLogo";
 
 const Layout: FC = ({ children }) => {
@@ -214,6 +214,8 @@ export const AuthConfirmation: FC<{
     if (code_challenge_method) authUrl.searchParams.append('code_challenge_method', code_challenge_method);
     // if includes zh, set uiLocale to zh else en
     const lang = uiLocale?.toLowerCase().includes('zh') ? 'zh' : 'en';
+    if (lang === 'zh') authUrl.searchParams.append('ui_locales', 'zh');
+    else authUrl.searchParams.append('ui_locales', 'en');
 
     return (
       <Layout>
