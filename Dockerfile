@@ -31,6 +31,7 @@ FROM base AS release
 COPY --from=install /temp/prod/node_modules node_modules
 COPY --from=prerelease /usr/src/app/src/ ./src
 COPY --from=prerelease /usr/src/app/package.json .
+COPY --from=prerelease /usr/src/app/tsconfig.json .
 # Copy the generated Prisma client (adjust path if different)
 COPY --from=prerelease /usr/src/app/prisma ./prisma
 RUN bun run prisma:generate
