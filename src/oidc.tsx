@@ -11,6 +11,7 @@ import { z } from "zod";
 import { HTTPException } from "hono/http-exception";
 import { addSeconds } from "date-fns";
 import { cors } from "hono/cors";
+import { AuthConfirmation } from "./pages/authorize";
 
 // Environment validation
 if (!process.env["NTHU_OAUTH_CLIENT_ID"])
@@ -120,6 +121,11 @@ const app = new Hono()
     jwk.kty = "RSA";
     return c.json({ keys: [jwk] });
   })
+  .get('/output.css', async (c) => {
+    const css = Bun.file('./src/pages/output.css');
+
+    return c.text(await css.text());
+  })
   .get(
     "/authorize",
     zValidator(
@@ -138,12 +144,13 @@ const app = new Hono()
           })
           .pipe(z.string().array()),
         prompt: z.string().default("login"),
-        state: z.string().optional(),
+        state: z.string(),
         response_type: z.string(),
         nonce: z.string().optional(),
         ui_locales: z.string().optional(),
         code_challenge: z.string().optional(),
         code_challenge_method: z.string().optional(),
+        acceptTos: z.coerce.boolean().optional(),
       }),
     ),
     async (c) => {
@@ -157,6 +164,7 @@ const app = new Hono()
         nonce,
         code_challenge,
         code_challenge_method,
+        acceptTos
       } = c.req.valid("query");
 
       // Basic validation
@@ -248,6 +256,12 @@ const app = new Hono()
       if (prompt === "none") {
         return c.redirect(`${redirect_uri}?error=login_required&state=${clientState}`);
       }
+
+      if (!sessionId && !acceptTos) {
+        return c.html(<AuthConfirmation {...c.req.valid("query")} scope={scope.join(" ")} />);
+      }
+
+      // User has accepted TOS, create session
 
       if (!sessionId) {
         sessionId = crypto.randomUUID();

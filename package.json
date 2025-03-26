@@ -3,17 +3,20 @@
   "scripts": {
     "dev": "bun run --hot src/index.ts",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev --name init"
+    "prisma:migrate": "prisma migrate dev --name init",
+    "tailwind:watch": "tailwindcss -i ./src/pages/input.css -o ./src/pages/output.css --watch"
   },
   "dependencies": {
     "@hono/zod-validator": "^0.4.3",
     "@prisma/client": "^6.5.0",
+    "@tailwindcss/cli": "^4.0.16",
     "date-fns": "^4.1.0",
     "firebase-admin": "^13.2.0",
-    "hono": "^4.7.2",
+    "hono": "^4.7.5",
     "jose": "^6.0.10",
     "prisma": "^6.5.0",
-    "rxdb": "^16.8.1"
+    "rxdb": "^16.8.1",
+    "tailwindcss": "^4.0.16"
   },
   "devDependencies": {
     "@types/bun": "latest"
