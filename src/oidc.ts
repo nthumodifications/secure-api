@@ -137,6 +137,7 @@ const app = new Hono()
             return scopes;
           })
           .pipe(z.string().array()),
+        prompt: z.string().default("login"),
         state: z.string().optional(),
         response_type: z.string(),
         nonce: z.string().optional(),
@@ -150,6 +151,7 @@ const app = new Hono()
         client_id,
         redirect_uri,
         scope,
+        prompt,
         state: clientState,
         response_type,
         nonce,
@@ -241,7 +243,11 @@ const app = new Hono()
           }
         }
       }
-      console.log('session id not found, creating new session', sessionId);
+
+      // if prompt=none, return error
+      if (prompt === "none") {
+        return c.redirect(`${redirect_uri}?error=login_required&state=${clientState}`);
+      }
 
       if (!sessionId) {
         sessionId = crypto.randomUUID();
