@@ -162,7 +162,6 @@ const app = new Hono()
         state: clientState,
         response_type,
         nonce,
-        ui_locales,
         code_challenge,
         code_challenge_method,
         acceptTos,

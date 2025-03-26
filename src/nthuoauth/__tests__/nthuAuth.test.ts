@@ -1,8 +1,7 @@
 import { describe, expect, it, mock, beforeEach, afterEach } from "bun:test";
 import nthuAuth from "../nthuAuth";
-import { getCookie, setCookie } from "hono/cookie";
+import { setCookie } from "hono/cookie";
 import { HTTPException } from "hono/http-exception";
-import { AuthFlow } from "../authFlow";
 
 // Mock dependencies
 mock.module("hono/cookie", () => ({
@@ -97,7 +96,7 @@ describe("nthuAuth middleware", () => {
       client_secret: "test_secret",
     });
 
-    const result = await middleware(noCodeContext as any, nextMock);
+    await middleware(noCodeContext as any, nextMock);
 
     // Check if setCookie was called
     expect(setCookie).toHaveBeenCalled();

@@ -1,4 +1,4 @@
-import { describe, expect, it, mock, afterEach } from "bun:test";
+import { describe, expect, it, mock } from "bun:test";
 import { AuthFlow } from "../authFlow";
 import { HTTPException } from "hono/http-exception";
 import { mockJsonResponse } from "../../__tests__/utils";
@@ -193,7 +193,7 @@ describe("AuthFlow", () => {
     const originalFetch = globalThis.fetch;
     let callCount = 0;
 
-    globalThis.fetch = mock(async (url) => {
+    globalThis.fetch = mock(async () => {
       callCount++;
       if (callCount === 1) {
         // First call is for token

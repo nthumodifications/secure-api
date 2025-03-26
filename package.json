@@ -5,7 +5,8 @@
     "start": "NODE_ENV=production bun run src/index.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev --name init",
-    "tailwind:watch": "tailwindcss -i ./src/pages/input.css -o ./src/pages/output.css --watch"
+    "tailwind:watch": "tailwindcss -i ./src/pages/input.css -o ./src/pages/output.css --watch",
+    "build": "tsc"
   },
   "dependencies": {
     "@hono/zod-validator": "^0.4.3",
