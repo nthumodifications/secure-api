@@ -9,6 +9,7 @@ import { z } from "zod";
 import { addSeconds } from "date-fns";
 import { cors } from "hono/cors";
 import { AuthConfirmation } from "./pages/authorize";
+import { serveStatic } from 'hono/bun'
 
 // Environment validation
 if (!process.env["NTHU_OAUTH_CLIENT_ID"])
@@ -118,11 +119,7 @@ const app = new Hono()
     jwk.kty = "RSA";
     return c.json({ keys: [jwk] });
   })
-  .get('/output.css', async (c) => {
-    const css = Bun.file('./src/pages/output.css');
-
-    return c.text(await css.text());
-  })
+  .get('/output.css', serveStatic({ path: './src/pages/output.css' }))
   .get(
     "/authorize",
     zValidator(

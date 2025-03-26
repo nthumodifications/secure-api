@@ -39,4 +39,4 @@ RUN bun run prisma:generate
 # run the app
 USER bun
 EXPOSE 5002/tcp
-ENTRYPOINT [ "bun", "run", "src/index.ts" ]
+ENTRYPOINT [ "bun", "run", "start" ]
