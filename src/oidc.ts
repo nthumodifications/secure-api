@@ -33,6 +33,7 @@ const VALID_SCOPES = [
   "openid", // sub
   "profile", // name, name_en, inschool
   "email", // email
+  "offline_access",
   "kv",
   "calendar",
 ];
@@ -163,6 +164,7 @@ const app = new Hono()
         !scope.includes("openid") ||
         response_type !== "code"
       ) {
+        // response_type == code is required for offline_access
         return c.json({ error: "invalid_request" }, 400);
       }
 
@@ -516,7 +518,7 @@ const app = new Hono()
         // Generate refresh token and access token string, save to prisma
         const refreshToken = crypto.randomUUID();
         const accessToken = crypto.randomUUID();
-        const insertRefreshToken = prisma.token.create({
+        const insertRefreshToken = authCode.scopes.includes("offline_access") ? prisma.token.create({
           data: {
             token: refreshToken,
             type: "REFRESH",
@@ -525,7 +527,7 @@ const app = new Hono()
             expiresAt: addSeconds(new Date(), refreshTokenExpiry),
             scopes: authCode.scopes,
           },
-        });
+        }) : undefined;
         const insertAccessToken = prisma.token.create({
           data: {
             token: accessToken,
@@ -536,7 +538,7 @@ const app = new Hono()
             scopes: authCode.scopes,
           },
         });
-        await prisma.$transaction([insertRefreshToken, insertAccessToken]);
+        await prisma.$transaction([insertAccessToken, ...(insertRefreshToken ? [insertRefreshToken] : [])]);
 
         /*
         OPTIONAL. Access Token hash value. 
@@ -581,7 +583,9 @@ const app = new Hono()
 
         return c.json({
           access_token: accessToken,
-          refresh_token: refreshToken,
+          ...(authCode.scopes.includes("offline_access") && {
+            refresh_token: refreshToken,
+          }),
           id_token: idToken,
           token_type: "Bearer",
           expires_in: 15 * 60,
