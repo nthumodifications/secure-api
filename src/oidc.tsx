@@ -89,6 +89,7 @@ const app = new Hono()
         "http://localhost:3000",
         "https://nthumods.com",
         "https://course.nthumods.com",
+        "https://courseweb-git-feat-new-auth-api-nthumods.vercel.app"
       ],
       allowHeaders: ["Authorization", "Content-Type"],
       allowMethods: ["GET", "POST"],
