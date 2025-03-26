@@ -731,22 +731,22 @@ const app = new Hono()
           issuer: ISSUER,
         });
         if (!payload.aud) {
-          return c.json({ error: "invalid_request" }, 400);
+          return c.json({ error: "invalid_request", error_description: "Missing aud" }, 400);
         }
         const client_id = payload.aud;
         if (Array.isArray(client_id)) {
-          return c.json({ error: "invalid_request" }, 400);
+          return c.json({ error: "invalid_request", error_description: "Multiple aud" }, 400);
         }
         const client = await prisma.client.findUnique({
           where: { clientId: client_id },
         });
         if (!client) {
-          return c.json({ error: "invalid_client" }, 400);
+          return c.json({ error: "invalid_client", error_description: "Client not found" }, 400);
         }
           
         // Verify post_login_redirect_uri is allowed
         if (!client.logoutUris.includes(post_logout_redirect_uri)) {
-          return c.json({ error: "invalid_request" }, 400);
+          return c.json({ error: "invalid_request", error_description: "Invalid post_logout_redirect_uri" }, 400);
         }
 
         // Clear session cookie
@@ -765,7 +765,8 @@ const app = new Hono()
         }
         return c.redirect(post_logout_redirect_uri + (state ? `?state=${state}` : ''));
       } catch (error) {
-        return c.json({ error: "invalid_request" }, 400);
+        console.error("/logout error", error);
+        return c.json({ error: "invalid_request", error_description: "Invalid id_token_hint" }, 400);
       }
     });
 
