@@ -729,6 +729,7 @@ const app = new Hono()
         const { payload } = await jwtVerify(id_token_hint, publicKey, {
           algorithms: ["RS256"],
           issuer: ISSUER,
+          currentDate: new Date(0)
         });
         if (!payload.aud) {
           return c.json({ error: "invalid_request", error_description: "Missing aud" }, 400);
