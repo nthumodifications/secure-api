@@ -5,7 +5,7 @@ routes = [
   { pattern = "auth.nthumods.com", custom_domain = true }
 ]
 minify = true
-assets = { directory = "src/pages/output.css" }
+assets = { directory = "src/pages/public" }
 
 [dev]
 port = 5002

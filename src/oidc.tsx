@@ -116,7 +116,7 @@ const app = new Hono()
     jwk.kty = "RSA";
     return c.json({ keys: [jwk] });
   })
-  .get("/output.css", serveStatic({ path: "./src/pages/output.css" }))
+  .get("/output.css", serveStatic({ path: "./src/pages/public/output.css" }))
   .get(
     "/authorize",
     zValidator(
