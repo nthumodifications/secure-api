@@ -11,7 +11,4 @@ export const app = new Hono()
   .route("/", oidc)
   .route("/api", api);
 
-export default {
-  port: 5002,
-  fetch: app.fetch,
-};
+export default app;

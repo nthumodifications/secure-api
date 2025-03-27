@@ -1,21 +1,25 @@
 import { initializeApp, getApps, cert } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
+import type { Context } from "hono";
+import { env } from "hono/adapter";
 
-const serviceAccountBase64 = process.env["FIREBASE_SERVICE_ACCOUNT"];
-if (!serviceAccountBase64)
-  throw new Error("FIREBASE_SERVICE_ACCOUNT is required");
-const serviceAccount = JSON.parse(
-  Buffer.from(serviceAccountBase64, "base64").toString(),
-);
-
-export const admin =
-  getApps().find((it) => it.name === "firebase-admin-app") ||
-  initializeApp(
-    {
-      credential: cert(serviceAccount),
-    },
-    "firebase-admin-app",
+export const getFirebaseAdmin = (c: Context) => {
+  const { FIREBASE_SERVICE_ACCOUNT } = env<{ FIREBASE_SERVICE_ACCOUNT: string }>(c);
+  const serviceAccount = JSON.parse(
+    Buffer.from(FIREBASE_SERVICE_ACCOUNT, "base64").toString(),
   );
-export const adminAuth = getAuth(admin);
-export const adminFirestore = getFirestore(admin);
+
+  const admin =
+    getApps().find((it) => it.name === "firebase-admin-app") ||
+    initializeApp(
+      {
+        credential: cert(serviceAccount),
+      },
+      "firebase-admin-app",
+    );
+  const adminAuth = getAuth(admin);
+  const adminFirestore = getFirestore(admin);
+
+  return { admin, adminAuth, adminFirestore };
+}

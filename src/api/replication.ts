@@ -2,7 +2,6 @@ import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { z } from "zod";
 import { requireAuth } from "../middleware/requireAuth";
-import { adminFirestore } from "../config/firebase_admin";
 import {
   FieldPath,
   FieldValue,
@@ -33,6 +32,7 @@ import type {
   TimetableSyncDocType,
   FirestoreCheckpointType,
 } from "../utils/firestore_replication/firestore_replication_types";
+import {getFirebaseAdmin} from '../config/firebase_admin';
 
 const app = new Hono()
   .get(
@@ -52,6 +52,7 @@ const app = new Hono()
 
       let newerQuery: Query;
       let sameTimeQuery: Query | undefined;
+      const { adminFirestore } = getFirebaseAdmin(c);
       const pullQuery = adminFirestore
         .collection("users")
         .doc(user.userId)
@@ -154,6 +155,7 @@ const app = new Hono()
         "json",
       ) as RxReplicationWriteToMasterRow<EventDocType>[];
       const user = c.var.user;
+      const { adminFirestore } = getFirebaseAdmin(c);
       const eventsRef = adminFirestore
         .collection("users")
         .doc(user.userId)
@@ -278,6 +280,7 @@ const app = new Hono()
 
       let newerQuery: Query;
       let sameTimeQuery: Query | undefined;
+      const { adminFirestore } = getFirebaseAdmin(c);
       const pullQuery = adminFirestore
         .collection("users")
         .doc(user.userId)
@@ -380,6 +383,7 @@ const app = new Hono()
         "json",
       ) as RxReplicationWriteToMasterRow<TimetableSyncDocType>[];
       const user = c.var.user;
+      const { adminFirestore } = getFirebaseAdmin(c);
       const timetableSyncRef = adminFirestore
         .collection("users")
         .doc(user.userId)

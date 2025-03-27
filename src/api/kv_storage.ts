@@ -2,7 +2,7 @@ import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { z } from "zod";
 import { requireAuth } from "../middleware/requireAuth";
-import { adminFirestore } from "../config/firebase_admin";
+import {getFirebaseAdmin} from '../config/firebase_admin';
 
 const validKeys = [
   "courses",
@@ -27,6 +27,7 @@ const app = new Hono()
       if (!validKeys.includes(key)) {
         return c.json({ error: "Invalid key" }, 400);
       }
+      const { adminFirestore } = getFirebaseAdmin(c);
       // Fetch data from Firestore
       const data = await adminFirestore
         .collection("users")
@@ -62,6 +63,7 @@ const app = new Hono()
       if (!validKeys.includes(key)) {
         return c.json({ error: "Invalid key" }, 400);
       }
+      const { adminFirestore } = getFirebaseAdmin(c);
       // Update data in Firestore
       await adminFirestore
         .collection("users")

@@ -11,16 +11,6 @@ import { cors } from "hono/cors";
 import { AuthConfirmation } from "./pages/authorize";
 import { serveStatic } from "hono/bun";
 
-// Environment validation
-if (!process.env["NTHU_OAUTH_CLIENT_ID"])
-  throw new Error("NTHU_OAUTH_CLIENT_ID is not set");
-if (!process.env["NTHU_OAUTH_CLIENT_SECRET"])
-  throw new Error("NTHU_OAUTH_CLIENT_SECRET is not set");
-if (!process.env["JWT_PUBLIC_KEY"])
-  throw new Error("JWT_PUBLIC_KEY is not set");
-if (!process.env["JWT_PRIVATE_KEY"])
-  throw new Error("JWT_PRIVATE_KEY is not set");
-
 const prisma = new PrismaClient();
 const ISSUER = "https://auth.nthumods.com";
 const accessTokenExpiry: number = 30 * 60; // 30 minutes
@@ -89,7 +79,7 @@ const app = new Hono()
         "http://localhost:3000",
         "https://nthumods.com",
         "https://course.nthumods.com",
-        "https://courseweb-git-feat-new-auth-api-nthumods.vercel.app"
+        "https://courseweb-git-feat-new-auth-api-nthumods.vercel.app",
       ],
       allowHeaders: ["Authorization", "Content-Type"],
       allowMethods: ["GET", "POST"],
@@ -304,11 +294,17 @@ const app = new Hono()
         },
       });
 
+      const { NTHU_OAUTH_CLIENT_ID, NTHU_OAUTH_CLIENT_SECRET, NTHU_OAUTH_REDIRECT_URI } = env<{
+        NTHU_OAUTH_CLIENT_ID: string;
+        NTHU_OAUTH_CLIENT_SECRET: string;
+        NTHU_OAUTH_REDIRECT_URI: string;
+      }>(c);
+
       // Let nthuAuth handle the NTHU OAuth redirect
       const nthuAuthMiddleware = nthuAuth({
-        client_id: process.env["NTHU_OAUTH_CLIENT_ID"]!,
-        client_secret: process.env["NTHU_OAUTH_CLIENT_SECRET"]!,
-        redirect_uri: process.env["NTHU_OAUTH_REDIRECT_URI"],
+        client_id: NTHU_OAUTH_CLIENT_ID,
+        client_secret: NTHU_OAUTH_CLIENT_SECRET,
+        redirect_uri: NTHU_OAUTH_REDIRECT_URI,
         scopes: ["userid", "name", "email", "inschool"],
         state: authRequest.state!,
       });
@@ -337,12 +333,21 @@ const app = new Hono()
       }
       await next();
     },
-    nthuAuth({
-      client_id: process.env["NTHU_OAUTH_CLIENT_ID"],
-      client_secret: process.env["NTHU_OAUTH_CLIENT_SECRET"],
-      redirect_uri: process.env["NTHU_OAUTH_REDIRECT_URI"],
-      scopes: ["userid", "inschool", "name", "email"],
-    }),
+    (c: Parameters<ReturnType<typeof nthuAuth>>[0], next) => {
+      const { NTHU_OAUTH_CLIENT_ID, NTHU_OAUTH_CLIENT_SECRET, NTHU_OAUTH_REDIRECT_URI } = env<{
+        NTHU_OAUTH_CLIENT_ID: string;
+        NTHU_OAUTH_CLIENT_SECRET: string;
+        NTHU_OAUTH_REDIRECT_URI: string;
+      }>(c);
+
+      const auth = nthuAuth({
+        client_id: NTHU_OAUTH_CLIENT_ID,
+        client_secret: NTHU_OAUTH_CLIENT_SECRET,
+        redirect_uri: NTHU_OAUTH_REDIRECT_URI,
+        scopes: ["userid", "inschool", "name", "email"],
+      })
+      return auth(c, next);
+    },
     async (c) => {
       const user = c.var.user;
       if (!user?.userid) return c.json({ error: "User ID not available" }, 400);

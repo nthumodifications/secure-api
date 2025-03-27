@@ -24,6 +24,6 @@
     "noPropertyAccessFromIndexSignature": true,
 
     "declaration": true,
-    "declarationDir": "./dist/types",
+    "declarationDir": "./dist/types"
   }
 }
