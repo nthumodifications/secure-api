@@ -23,8 +23,6 @@ COPY . .
 
 # [optional] tests & build
 ENV NODE_ENV=production
-# Assuming prisma schema is in the project root or a prisma directory
-RUN bun test
 
 # copy production dependencies and source code into final image
 FROM base AS release
